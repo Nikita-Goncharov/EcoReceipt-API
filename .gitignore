@@ -5,3 +5,5 @@
 *.sqlite3
 *.log
 __pycache__/
+
+server_8000.sh
