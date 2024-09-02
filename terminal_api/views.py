@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
-from database_models.models import Card, Company
+from database_models.models import Card, Company, Receipt
 
 
 class WriteOffMoney(APIView):
@@ -55,4 +55,10 @@ class WriteOffMoney(APIView):
 
 class CreateReceipt(APIView):  # TODO: Inner view ????
     def post(self, request: Request):
-        pass
+        card = Card.objects.first()
+        company = Company.objects.first()
+        receipt = Receipt()
+        receipt.card = card
+        receipt.company = company
+        receipt.save()
+        return Response(data={"success": True, "message": ""})

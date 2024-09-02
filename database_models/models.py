@@ -1,7 +1,10 @@
 import re
+import os
 import string
+from datetime import date
 from decimal import Decimal
 
+import cv2 as cv
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -87,7 +90,7 @@ class Company(models.Model):
 
 
 class Receipt(models.Model):
-	receipt_img = models.ImageField(upload_to ='uploads/%Y/%m/%d/', blank=True, null=True)
+	receipt_img = models.ImageField(upload_to='uploads/%Y/%m/%d/', blank=True, null=True)
 	created = models.DateTimeField(auto_now_add=True)
 	card = models.ForeignKey(to=Card, on_delete=models.DO_NOTHING)
 	company = models.ForeignKey(to=Company, on_delete=models.DO_NOTHING)
@@ -99,9 +102,25 @@ class Receipt(models.Model):
 		if not self.receipt_img:
 			img = self.__generate_receipt_img()
 			self.receipt_img = img
+			self.save()
 		
 		return self.receipt_img
 
-	def __generate_receipt_img(self):
+	def __generate_receipt_img(self) -> str:
+		RECEIPTS_ROOT = "uploads"
+
+		receipt_image = cv.imread("media/empty_receipt.jpg").copy()
+
 		# TODO: how i can sign receipts(for checking if original)
-		pass  # TODO: generate fill empty receipt image using opencv
+		# TODO: fill with data
+		today = date.today()
+		year, month, day = today.year, today.month, today.day
+
+		receipt_image_path = os.path.join("media", RECEIPTS_ROOT, str(year), str(month), str(day))
+
+		if not os.path.exists(receipt_image_path):
+			os.makedirs(receipt_image_path)
+
+		cv.imwrite(os.path.join(receipt_image_path, "receipt.jpg"), receipt_image)  # TODO: add time in receipt name
+
+		return os.path.join(RECEIPTS_ROOT, str(year), str(month), str(day), "receipt.jpg")
