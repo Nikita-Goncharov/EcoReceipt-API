@@ -1,6 +1,5 @@
-import re
 import os
-import string
+import re
 from datetime import date
 from decimal import Decimal
 
@@ -8,12 +7,8 @@ import cv2 as cv
 from django.contrib.auth.models import User
 from django.db import models
 
+from .utils import check_hex_digit
 # TODO: models tests
-
-
-# TODO: move to utils
-def check_hex_digit(hex_string: str) -> bool:
-	return len(hex_string) == 8 and all((symbol in string.hexdigits) for symbol in hex_string)
 
 
 class Profile(models.Model):
@@ -73,7 +68,7 @@ class Card(models.Model):
 class Company(models.Model):
 	name = models.CharField(max_length=100)
 	_company_token = models.CharField(max_length=15, unique=True, null=True, blank=True)
-	balance = models.DecimalField(max_digits=15, decimal_places=2)
+	_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
 	def __str__(self):
 		return f"Company: {self.name}"
@@ -88,25 +83,30 @@ class Company(models.Model):
 		if reg.match(value) and len(value) == 15:
 			self._company_token = value
 
+	@property
+	def balance(self):
+		return self._balance
+
+	@balance.setter
+	def balance(self, new_balance: Decimal):
+		self._balance = new_balance
+
 
 class Receipt(models.Model):
-	receipt_img = models.ImageField(upload_to='uploads/%Y/%m/%d/', blank=True, null=True)
-	created = models.DateTimeField(auto_now_add=True)
-	card = models.ForeignKey(to=Card, on_delete=models.DO_NOTHING)
-	company = models.ForeignKey(to=Company, on_delete=models.DO_NOTHING)
+	img = models.ImageField(upload_to='uploads/%Y/%m/%d/', blank=True, null=True)
 
 	def __str__(self):
-		return f"Receipt: {self.card.card_number} - {self.created}"
+		return f"Receipt:"  # TODO:
 
 	def get_receipt_img(self):
-		if not self.receipt_img:
-			img = self.__generate_receipt_img()
-			self.receipt_img = img
+		if not self.img:
+			img = self._generate_receipt_img()
+			self.img = img
 			self.save()
 		
-		return self.receipt_img
+		return self.img
 
-	def __generate_receipt_img(self) -> str:
+	def _generate_receipt_img(self) -> str:
 		RECEIPTS_ROOT = "uploads"
 
 		receipt_image = cv.imread("media/empty_receipt.jpg").copy()
@@ -124,3 +124,20 @@ class Receipt(models.Model):
 		cv.imwrite(os.path.join(receipt_image_path, "receipt.jpg"), receipt_image)  # TODO: add time in receipt name
 
 		return os.path.join(RECEIPTS_ROOT, str(year), str(month), str(day), "receipt.jpg")
+
+
+class Transaction(models.Model):
+	card = models.ForeignKey(to=Card, on_delete=models.DO_NOTHING)
+	company = models.ForeignKey(to=Company, on_delete=models.DO_NOTHING)
+	receipt = models.ForeignKey(to=Receipt, on_delete=models.CASCADE)
+
+	card_balance_before = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+	card_balance_after = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+	company_balance_before = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+	company_balance_after = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+	created = models.DateTimeField(auto_now_add=True)
+
+	def __str__(self):
+		return f"Transaction: {self.card.card_number} - {self.created}"
