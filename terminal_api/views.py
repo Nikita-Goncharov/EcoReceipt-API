@@ -1,15 +1,19 @@
 from decimal import Decimal
 
-import requests
-from django.db import transaction
+from django.db import transaction as django_transaction
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
-from database_models.models import Card, Company, Receipt
+from client_api.views import GetCardBalance
+from database_models.models import Card, Company, Receipt, Transaction
 
 
 class WriteOffMoney(APIView):
+    # permission_classes = [IsAuthenticated]
+
+    @django_transaction.atomic
     def post(self, request: Request):
         try:
             card_uid = request.data.get("card_uid")
@@ -19,8 +23,8 @@ class WriteOffMoney(APIView):
             if card_uid is None or write_off_amount is None or company_token is None:
                 return Response(data={"success": False, "message": "Error. Incorrect request body."}, status=400)
 
-            # TODO: create global settings or just take current domain
-            response = requests.get(f"http://localhost:8000/client_api/get_card_balance/{card_uid}")
+            # requests.get(f"http://localhost:8000/client_api/get_card_balance/{card_uid}")
+            response = GetCardBalance().get(request=request, card_uid=card_uid)
             if response.status_code != 200:
                 return Response(data={"success": False, "message": f"Error. Card UID is incorrect."}, status=404)
 
@@ -41,24 +45,38 @@ class WriteOffMoney(APIView):
             card = Card.objects.get(_card_uid=card_uid)
             company = companies.first()
 
+            transaction = Transaction()
+            transaction.card = card
+            transaction.company = company
+            transaction.receipt = Receipt()
+            transaction.card_balance_before = card.balance
+            transaction.company_balance_before = company.balance
+
             card.balance = card.balance - Decimal(write_off_amount)
             company.balance = company.balance + Decimal(write_off_amount)
 
-            with transaction.atomic():  # Save changes if transaction
-                card.save()
-                company.save()
+            card.save()
+            company.save()
 
-            return Response(data={"success": True, "message": ""}, status=200)
+            transaction.card_balance_after = card.balance
+            transaction.company_balance_after = company.balance
+
+            transaction.save()
+            return Response(data={"success": True, "transaction_id": transaction.id, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)
 
 
 class CreateReceipt(APIView):  # TODO: Inner view ????
     def post(self, request: Request):
-        card = Card.objects.first()
-        company = Company.objects.first()
-        receipt = Receipt()
-        receipt.card = card
-        receipt.company = company
-        receipt.save()
-        return Response(data={"success": True, "message": ""})
+        try:
+            transaction_id = request.data.get("transaction_id")
+            if transaction_id is None:
+                return Response(data={"success": False, "message": "Error. Incorrect request body."}, status=400)
+
+            transaction = Transaction.objects.get(id=transaction_id)
+            receipt_img_path = transaction.receipt.get_receipt_img()
+
+            return Response(data={"success": True, "receipt_img_path": receipt_img_path, "message": ""})
+        except Exception as ex:
+            return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)
