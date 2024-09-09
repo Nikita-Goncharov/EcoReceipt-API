@@ -1,29 +1,32 @@
 import os
 import re
+from random import randint
 from datetime import date
 from decimal import Decimal
 
 import cv2 as cv
 from django.contrib.auth.models import User
+from django.db.utils import IntegrityError
 from django.db import models
 
 from .utils import check_hex_digit
-# TODO: models tests
 
+# TODO: models tests
+# TODO: add "created" and "updated" fields for models
 
 class Profile(models.Model):
 	# TODO: add fields
-	user = models.OneToOneField(to=User, on_delete=models.CASCADE)
+	user = models.OneToOneField(to=User, on_delete=models.CASCADE, related_name="profile")
 
 	def __str__(self):
 		return f"{self.user.first_name} - {self.user.last_name}"
 
 
 class Card(models.Model):
-	_card_number = models.CharField(max_length=16, unique=True)
-	_cvv = models.CharField(max_length=3, unique=True)
+	_card_number = models.CharField(max_length=16, unique=True, null=True, blank=True)
+	_cvv = models.CharField(max_length=3, null=True, blank=True)
 	_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-	_card_uid = models.CharField(max_length=20, unique=True, null=True, blank=True)
+	_card_uid = models.CharField(max_length=6, unique=True, null=True, blank=True)
 	owner = models.ForeignKey(to=Profile, on_delete=models.CASCADE)
 
 	def __str__(self):
@@ -63,6 +66,20 @@ class Card(models.Model):
 	def card_uid(self, value: str):
 		if check_hex_digit(value):
 			self._card_uid = value.lower()
+		else:
+			print("Error. ")
+
+	def generate_cvv(self):
+		self.cvv = str(randint(100, 999))
+		self.save()
+
+	def generate_card_number(self):
+		for i in range(10):  # 10 times try to generate unique card_number
+			try:
+				self.card_number = str(randint(0000000000000000, 9999999999999999))  # from 0(amount 16) to 9(amount 16)
+				self.save()
+			except IntegrityError:
+				pass
 
 
 class Company(models.Model):
