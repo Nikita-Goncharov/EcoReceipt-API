@@ -11,12 +11,14 @@ from django.db import models
 
 from .utils import check_hex_digit
 
-# TODO: models tests
-# TODO: add "created" and "updated" fields for models
+# TODO: models testing
 
-class Profile(models.Model):
-	# TODO: add fields
+
+class Profile(models.Model):  # TODO: add fields
 	user = models.OneToOneField(to=User, on_delete=models.CASCADE, related_name="profile")
+
+	created = models.DateTimeField(auto_now_add=True)
+	updated = models.DateTimeField(auto_now=True)
 
 	def __str__(self):
 		return f"{self.user.first_name} - {self.user.last_name}"
@@ -28,6 +30,9 @@ class Card(models.Model):
 	_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 	_card_uid = models.CharField(max_length=6, unique=True, null=True, blank=True)
 	owner = models.ForeignKey(to=Profile, on_delete=models.CASCADE)
+
+	created = models.DateTimeField(auto_now_add=True)
+	updated = models.DateTimeField(auto_now=True)
 
 	def __str__(self):
 		return f"{self.card_number} - {self.owner.user.last_name}"
@@ -87,6 +92,9 @@ class Company(models.Model):
 	_company_token = models.CharField(max_length=15, unique=True, null=True, blank=True)
 	_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
+	created = models.DateTimeField(auto_now_add=True)
+	updated = models.DateTimeField(auto_now=True)
+
 	def __str__(self):
 		return f"Company: {self.name}"
 
@@ -111,6 +119,9 @@ class Company(models.Model):
 
 class Receipt(models.Model):
 	img = models.ImageField(upload_to='uploads/%Y/%m/%d/', blank=True, null=True)
+
+	created = models.DateTimeField(auto_now_add=True)
+	updated = models.DateTimeField(auto_now=True)
 
 	def __str__(self):
 		return f"Receipt:"  # TODO:
@@ -155,6 +166,7 @@ class Transaction(models.Model):
 	company_balance_after = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
 	created = models.DateTimeField(auto_now_add=True)
+	updated = models.DateTimeField(auto_now=True)
 
 	def __str__(self):
 		return f"Transaction: {self.card.card_number} - {self.created}"
