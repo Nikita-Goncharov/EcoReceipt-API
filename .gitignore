@@ -8,3 +8,4 @@ __pycache__/
 
 server_8000.sh
 telegram_bot/
+media/uploads/**

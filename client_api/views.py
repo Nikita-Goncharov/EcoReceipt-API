@@ -80,6 +80,8 @@ class RegisterCard(APIView):
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
 
+# TODO: view for adding money on balance card and company
+
 class GetCardBalance(APIView):
     def get(self, request: Request, card_uid: str) -> Response:
         try:

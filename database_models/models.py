@@ -28,7 +28,7 @@ class Card(models.Model):
 	_card_number = models.CharField(max_length=16, unique=True, null=True, blank=True)
 	_cvv = models.CharField(max_length=3, null=True, blank=True)
 	_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-	_card_uid = models.CharField(max_length=6, unique=True, null=True, blank=True)
+	_card_uid = models.CharField(max_length=8, unique=True, null=True, blank=True)
 	owner = models.ForeignKey(to=Profile, on_delete=models.CASCADE)
 
 	created = models.DateTimeField(auto_now_add=True)

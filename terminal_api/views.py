@@ -4,14 +4,13 @@ from django.db import transaction as django_transaction
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
 
 from client_api.views import GetCardBalance
 from database_models.models import Card, Company, Receipt, Transaction
 
 
+# TODO: in error responses add error_code for terminal for error show on lcd
 class WriteOffMoney(APIView):
-    # permission_classes = [IsAuthenticated]
 
     @django_transaction.atomic
     def post(self, request: Request):
@@ -28,7 +27,7 @@ class WriteOffMoney(APIView):
             if response.status_code != 200:
                 return Response(data={"success": False, "message": f"Error. Card UID is incorrect."}, status=404)
 
-            card_current_balance = response.json()["balance"]
+            card_current_balance = response.data["balance"]
             if card_current_balance < write_off_amount:  # Check if card balance bigger then write off sum
                 return Response(
                     data={"success": False, "message": f"Error. Card balance lower than write off sum."},
@@ -48,7 +47,11 @@ class WriteOffMoney(APIView):
             transaction = Transaction()
             transaction.card = card
             transaction.company = company
+
             transaction.receipt = Receipt()
+            transaction.receipt.save()
+            transaction.receipt.get_receipt_img()
+
             transaction.card_balance_before = card.balance
             transaction.company_balance_before = company.balance
 
@@ -63,20 +66,5 @@ class WriteOffMoney(APIView):
 
             transaction.save()
             return Response(data={"success": True, "transaction_id": transaction.id, "message": ""}, status=200)
-        except Exception as ex:
-            return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)
-
-
-class CreateReceipt(APIView):  # TODO: Inner view ????
-    def post(self, request: Request):
-        try:
-            transaction_id = request.data.get("transaction_id")
-            if transaction_id is None:
-                return Response(data={"success": False, "message": "Error. Incorrect request body."}, status=400)
-
-            transaction = Transaction.objects.get(id=transaction_id)
-            receipt_img_path = transaction.receipt.get_receipt_img()
-
-            return Response(data={"success": True, "receipt_img_path": receipt_img_path, "message": ""})
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)

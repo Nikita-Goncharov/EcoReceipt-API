@@ -3,11 +3,11 @@ from . import views
 
 urlpatterns = [
     path("register_user/", views.RegisterUser.as_view()),
+    path("register_card/", views.RegisterCard.as_view()),
     path("login/", views.LoginUser.as_view()),
     path("logout/", views.LogoutUser.as_view()),
-    path("register_card/", views.RegisterCard.as_view()),
-    # login_user
-    # logout_user
+    # TODO: register_company
+
     path("get_card_balance/<str:card_uid>/", views.GetCardBalance.as_view()),
     # get_company_balance
     # get_user_cards
