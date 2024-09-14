@@ -50,8 +50,7 @@ class WriteOffMoney(APIView):
 
             transaction.receipt = Receipt()
             transaction.receipt.save()
-            transaction.receipt.get_receipt_img()
-
+            transaction.amount = write_off_amount
             transaction.card_balance_before = card.balance
             transaction.company_balance_before = company.balance
 
@@ -63,8 +62,9 @@ class WriteOffMoney(APIView):
 
             transaction.card_balance_after = card.balance
             transaction.company_balance_after = company.balance
-
             transaction.save()
+
+            transaction.receipt.get_receipt_img()
             return Response(data={"success": True, "transaction_id": transaction.id, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)
