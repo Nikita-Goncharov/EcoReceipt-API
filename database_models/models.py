@@ -25,7 +25,7 @@ class Profile(models.Model):  # TODO: add fields
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.first_name} - {self.user.last_name}"
+        return f"Profile: {self.user.first_name} {self.user.last_name}"
 
 
 class Card(models.Model):
@@ -39,7 +39,7 @@ class Card(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.card_number} - {self.owner.user.last_name}"
+        return f"Card: {self.card_number}"
 
     @property
     def cvv(self):
@@ -130,6 +130,20 @@ class Company(models.Model):
         return f"{self.country}, {self.city}, {self.street} {self.building}"
 
 
+class Product(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(null=True, blank=True)
+    cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    company_owner = models.ForeignKey(to=Company, on_delete=models.CASCADE, related_name="products")
+
+    def __str__(self):
+        return f"Product: {self.name}"
+
+
 class Receipt(models.Model):
     img = models.ImageField(upload_to='uploads/%Y/%m/%d/', blank=True, null=True)
 
@@ -137,7 +151,7 @@ class Receipt(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Receipt:"  # TODO:
+        return f"Receipt: {self.img}"
 
     def get_receipt_img(self):
         if not self.img:
@@ -147,7 +161,7 @@ class Receipt(models.Model):
 
         return self.img
 
-    def _generate_receipt_img(self) -> str:  # TODO: how i can sign receipts(for checking if original)
+    def _generate_receipt_img(self) -> str:  # TODO: how i can sign receipts(for checking if original) # TODO: refactor
         RECEIPTS_ROOT = "uploads"
 
         receipt_image = Image.open("media/empty_receipt.jpg").copy()  # height: 1200 width: 800
@@ -168,13 +182,18 @@ class Receipt(models.Model):
                                           self.created.hour,
                                           self.created.minute)
 
+        receipt_image_path = os.path.join("media", RECEIPTS_ROOT, str(year), str(month), str(day))
+
+        if not os.path.exists(receipt_image_path):
+            os.makedirs(receipt_image_path)
+
         data = {
             "company_name": self.transaction.company.name,
             "company_address": self.transaction.company.address,
             "company_hotline_phone": self.transaction.company.hotline_phone,
             "random_goods_with_cost": get_random_goods_with_all_amount(self.transaction.amount),
             "amount": self.transaction.amount,
-            "date_time": self.created.strftime("%d/%m/%Y, %H:%M:%S"),
+            "date_time": self.created.strftime("%d/%m/%Y %H:%M:%S"),
             "first_name": self.transaction.card.owner.user.first_name,
             "last_name": self.transaction.card.owner.user.last_name,
             "card_number": f"**** **** **** {self.transaction.card.card_number[-4:]}",
@@ -197,24 +216,27 @@ class Receipt(models.Model):
             (0, 0, 0),
             font=monospace_header
         )
+
+        # Add address
         next_line_oy += 70
-        # TODO: add address
         draw.text(
             (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
             f'Address: {data["company_address"]}',
             (0, 0, 0),
             font=monospace_paragraph
         )
+
+        # Add phone
         next_line_oy += 30
-        # TODO: add phone
         draw.text(
             (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
             f'Telephone: {data["company_hotline_phone"]}',
             (0, 0, 0),
             font=monospace_paragraph
         )
+
+        # Add date and time
         next_line_oy += 30
-        # TODO: add date and time
         draw.text(
             (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
             f'Date and time: {data["date_time"]}',
@@ -222,36 +244,34 @@ class Receipt(models.Model):
             font=monospace_paragraph
         )
 
+        # Add list of bought goods
+        next_line_oy += 20
+        draw.text(
+            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
+            '-----------------------------------------------------',
+            (0, 0, 0),
+            font=monospace_paragraph
+        )
         next_line_oy += 30
-        # TODO: add list of bought goods
+
         for product_tuple in data["random_goods_with_cost"]:
             product_name, product_cost = product_tuple
-
             draw.text(
                 (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-                '-----------------------------------------------------',
+                product_name,
                 (0, 0, 0),
                 font=monospace_paragraph
             )
-            next_line_oy += 20
             draw.text(
-                (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-                f'{product_name} - {product_cost}$',
+                (receipt_corners_coords["top_right"][0] - 40, receipt_corners_coords["top_left"][1] + next_line_oy),
+                f'{product_cost}$',
                 (0, 0, 0),
                 font=monospace_paragraph
             )
-            next_line_oy += 20
-            draw.text(
-                (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-                '-----------------------------------------------------',
-                (0, 0, 0),
-                font=monospace_paragraph
-            )
+            next_line_oy += 25
 
-            next_line_oy += 20
-
-        next_line_oy += 30
-        # TODO: add total sum
+        # Add total sum
+        next_line_oy += 5
         draw.text(
             (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
             '-----------------------------------------------------',
@@ -261,27 +281,28 @@ class Receipt(models.Model):
         next_line_oy += 20
         draw.text(
             (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            f'Total sum: {data["amount"]}',
+            'AMOUNT',
             (0, 0, 0),
             font=monospace_paragraph
         )
-        next_line_oy += 20
         draw.text(
-            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            '-----------------------------------------------------',
+            (receipt_corners_coords["top_right"][0] - 40, receipt_corners_coords["top_left"][1] + next_line_oy),
+            f'{data["amount"]}$',
             (0, 0, 0),
             font=monospace_paragraph
         )
+
+        # Add user card number
         next_line_oy += 30
-        # TODO: add user card number
         draw.text(
             (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
             f'Payment card: {data["card_number"]}',
             (0, 0, 0),
             font=monospace_paragraph
         )
+
+        # Add wish phrase
         next_line_oy += 30
-        # TODO: add wish phrase
 
         # Count width of phrase
         phrase_count_symbols, phrase_spaces_count = len(data["phrase"]), len(data["phrase"]) - 1
@@ -321,11 +342,6 @@ class Receipt(models.Model):
             ox_middle_coords - bar_code_middle_ox, receipt_corners_coords["bottom_left"][1] - bar_code.height - 30),
                             bar_code)
 
-        receipt_image_path = os.path.join("media", RECEIPTS_ROOT, str(year), str(month), str(day))
-
-        if not os.path.exists(receipt_image_path):
-            os.makedirs(receipt_image_path)
-
         receipt_image = np.array(receipt_image)
         cv.imwrite(os.path.join(receipt_image_path, f"receipt_{year}_{month}_{day}_{hour}_{minute}.jpg"), receipt_image)
 
@@ -348,4 +364,4 @@ class Transaction(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Transaction: {self.card.card_number} - {self.created}"
+        return f"Transaction: {self.card.card_number}"
