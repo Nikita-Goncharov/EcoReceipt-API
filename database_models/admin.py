@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Card, Receipt, Profile, Company, Transaction
+from .models import Card, Receipt, Profile, Company, Transaction, Product
 
 
 @admin.register(Card)
@@ -15,6 +15,11 @@ class ReceiptAdmin(admin.ModelAdmin):
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user__username', "created", "updated")
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ("name", "cost", "company_owner", "created", "updated")
 
 
 @admin.register(Company)
