@@ -19,31 +19,57 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
+# TODO: add ProductSerializer
+
 class CardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Card
-        fields = ["_card_number", "_cvv", "_balance", "_card_uid", "owner"]
+        fields = ["_card_number", "_cvv", "_balance", "_card_uid", "owner", "created", "updated"]
+        extra_kwargs = {
+            "_card_number": {"read_only": True},
+            "_cvv": {"read_only": True},
+            "_balance": {"read_only": True},
+            "created": {"read_only": True},
+            "updated": {"read_only": True}
+        }
 
 
 class ReceiptSerializer(serializers.ModelSerializer):
     class Meta:
         model = Receipt
-        fields = ["img"]
+        fields = ["img", "created", "updated"]
+        extra_kwargs = {
+            "created": {"read_only": True},
+            "updated": {"read_only": True}
+        }
 
 
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
-        fields = ["name", "_company_token", "_balance"]
+        fields = ["name", "_balance", "hotline_phone", "country", "city", "street", "building", "created", "updated"]
+        extra_kwargs = {
+            "_balance": {"read_only": True},
+            "created": {"read_only": True},
+            "updated": {"read_only": True}
+        }
 
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ["card", "company", "receipt", "card_balance_before", "card_balance_after", "company_balance_before", "company_balance_after", "created"]
+        fields = ["card", "company", "receipt", "card_balance_before", "card_balance_after", "company_balance_before", "company_balance_after", "created", "updated"]
+        extra_kwargs = {
+            "created": {"read_only": True},
+            "updated": {"read_only": True}
+        }
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ["user"]
+        fields = ["user", "created", "updated"]
+        extra_kwargs = {
+            "created": {"read_only": True},
+            "updated": {"read_only": True}
+        }

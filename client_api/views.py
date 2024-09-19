@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -6,9 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 
-from database_models.models import Card, Profile
+from database_models.models import Card, Profile, Company
 from database_models.utils import check_hex_digit
-from database_models.serializers import UserSerializer
+from database_models.serializers import UserSerializer, CompanySerializer
 
 
 class RegisterUser(APIView):
@@ -62,7 +64,7 @@ class LogoutUser(APIView):
         return Response(data={"success": True, "message": ""})
 
 
-class RegisterCard(APIView):
+class RegisterCard(APIView):  # TODO: rewrite with serializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
@@ -80,14 +82,75 @@ class RegisterCard(APIView):
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
 
-# TODO: view for adding money on balance card and company
+class RegisterCompany(APIView):
+    def post(self, request: Request) -> Response:
+        try:
+            name = request.data.get("name")
+            if Company.objects.filter(name=name).count():
+                return Response(data={"success": False, "message": f"Error. There is company with that data."}, status=500)
 
-class GetCardBalance(APIView):
+            company_serializer = CompanySerializer(data=request.data)
+            if company_serializer.is_valid():
+                company = company_serializer.save()
+                company.generate_token()
+                return Response(data={"success": True, "message": ""})
+            else:
+                return Response(data={"success": False, "message": f"Error. Request data is not valid."}, status=400)
+        except Exception as ex:
+            return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+
+
+class IncreaseCardBalance(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        try:
+            card_number = request.data.get("card_number")
+            amount = request.data.get("amount", 0)
+
+            if card_number is None:
+                return Response(data={"success": False, "message": "Error. There is no card_number."}, status=400)
+
+            cards = Card.objects.filter(_card_number=card_number)
+            if cards.count() == 0:
+                return Response(data={"success": False, "message": "Error. There is no company with this card_number"}, status=404)
+
+            card = cards.first()
+            if request.user == card.owner.user:
+                card.balance = card.balance + Decimal(amount)
+                card.save()
+                return Response(data={"success": True, "message": ""})
+            else:
+                return Response(data={"success": False, "message": "Error. You are not card owner."}, status=403)
+        except ObjectDoesNotExist:
+            return Response(data={"success": False, "message": "Error. Card does not registered."}, status=404)
+
+
+class IncreaseCompanyBalance(APIView):
+    def post(self, request: Request) -> Response:
+        try:
+            company_token = request.data.get("company_balance")
+            amount = request.data.get("amount", 0)
+
+            if company_token is None:
+                return Response(data={"success": False, "message": "Error. There is no company_token."}, status=400)
+
+            companies = Company.objects.filter(_company_token=company_token)
+            if companies.count() == 0:
+                return Response(data={"success": False, "message": "Error. There is no company with this company_token."}, status=404)
+            company = companies.first()
+            company.balance = company.balance + Decimal(amount)
+            company.save()
+            return Response(data={"success": True, "message": ""})
+        except ObjectDoesNotExist:
+            return Response(data={"success": False, "message": "Error. Card does not registered."}, status=404)
+
+
+class GetCardBalance(APIView):  # TODO: inner view
     def get(self, request: Request, card_uid: str) -> Response:
         try:
             if check_hex_digit(card_uid):
                 card = Card.objects.get(_card_uid=card_uid.lower())
-                # if card.owner == request.user:  # TODO: check if request.user it is card owner
                 return Response(data={"success": True, "balance": card.balance, "message": ""})
             else:
                 return Response(data={"success": False, "message": "Error. Invalid card UID."}, status=400)

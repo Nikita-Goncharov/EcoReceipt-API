@@ -4,11 +4,16 @@ from . import views
 urlpatterns = [
     path("register_user/", views.RegisterUser.as_view()),
     path("register_card/", views.RegisterCard.as_view()),
+    path("register_company/", views.RegisterCompany.as_view()),
     path("login/", views.LoginUser.as_view()),
     path("logout/", views.LogoutUser.as_view()),
     # TODO: register_company
 
-    path("get_card_balance/<str:card_uid>/", views.GetCardBalance.as_view()),
+    # get_card_balance - inner view
+    path("increase_card_balance/", views.IncreaseCardBalance.as_view()),
+    path("increase_company_balance/", views.IncreaseCompanyBalance.as_view()),
+
+    # TODO:
     # get_company_balance
     # get_user_cards
     # get_all_receipts
