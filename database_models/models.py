@@ -1,19 +1,13 @@
 import os
-import re
-import json
 from random import randint
-from datetime import datetime
 from decimal import Decimal
 
-import cv2 as cv
-import numpy as np
 from django.db import models
 from django.db.utils import IntegrityError
 from django.contrib.auth.models import User
-from PIL import Image, ImageFont, ImageDraw
 
-from .utils import check_hex_digit, get_random_goods_with_all_amount, generate_barcode_img, BarCodeOptions
-
+from .utils import check_hex_digit, get_random_goods_with_all_amount
+from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptCornerCoords, Coords, ReceiptData
 
 # TODO: models testing
 
@@ -92,14 +86,14 @@ class Card(models.Model):
 
 
 class Company(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
     _company_token = models.CharField(max_length=15, unique=True, null=True, blank=True)
     _balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     hotline_phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    country = models.CharField(max_length=40, unique=True, null=True, blank=True)
-    city = models.CharField(max_length=40, unique=True, null=True, blank=True)
-    street = models.CharField(max_length=40, unique=True, null=True, blank=True)
-    building = models.CharField(max_length=10, unique=True, null=True, blank=True)
+    country = models.CharField(max_length=40, null=True, blank=True)
+    city = models.CharField(max_length=40, null=True, blank=True)
+    street = models.CharField(max_length=40, null=True, blank=True)
+    building = models.CharField(max_length=10, null=True, blank=True)
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -110,12 +104,6 @@ class Company(models.Model):
     @property
     def company_token(self):
         return self._company_token
-
-    @company_token.setter
-    def company_token(self, value: str):
-        reg = re.compile('^[0-9]*#')  # check if value contain only with numbers(0-9) and * and #
-        if reg.match(value) and len(value) == 15:
-            self._company_token = value
 
     @property
     def balance(self):
@@ -128,6 +116,18 @@ class Company(models.Model):
     @property
     def address(self):
         return f"{self.country}, {self.city}, {self.street} {self.building}"
+
+    def generate_token(self):
+        # token should contain only with numbers(0-9) and * and #
+        # token length should be 15 symbols
+        valid_token_symbols = "0123456789*#"
+        token = ""
+        for i in range(0, 15):
+            index = randint(0, len(valid_token_symbols)-1)
+            token = valid_token_symbols[index]
+
+        self._company_token = token
+        self.save()
 
 
 class Product(models.Model):
@@ -161,191 +161,49 @@ class Receipt(models.Model):
 
         return self.img
 
-    def _generate_receipt_img(self) -> str:  # TODO: how i can sign receipts(for checking if original) # TODO: refactor
-        RECEIPTS_ROOT = "uploads"
+    def _generate_receipt_img(self) -> str:  # TODO: how i can sign receipts(for checking if original)
+        try:
+            year, month, day, hour, minute = self.created.year, self.created.month, self.created.day, self.created.hour, self.created.minute
 
-        receipt_image = Image.open("media/empty_receipt.jpg").copy()  # height: 1200 width: 800
+            new_receipt_image_path = f"media/uploads/{year}/{month}/{day}/receipt_{year}_{month}_{day}_{hour}_{minute}.jpg"
+            if not os.path.exists(os.path.dirname(new_receipt_image_path)):
+                os.makedirs(os.path.dirname(new_receipt_image_path))
 
-        # Receipt corners coords in image
-        receipt_corners_coords = {
-            "top_left": (197, 83),
-            "top_right": (603, 83),
-            "bottom_left": (191, 1123),
-            "bottom_right": (608, 1120),
-        }
-        receipt_image_width = receipt_corners_coords["top_right"][0] - receipt_corners_coords["top_left"][0]
-        ox_middle_coords = receipt_corners_coords["top_left"][0] + receipt_image_width // 2
-
-        year, month, day, hour, minute = (self.created.year,
-                                          self.created.month,
-                                          self.created.day,
-                                          self.created.hour,
-                                          self.created.minute)
-
-        receipt_image_path = os.path.join("media", RECEIPTS_ROOT, str(year), str(month), str(day))
-
-        if not os.path.exists(receipt_image_path):
-            os.makedirs(receipt_image_path)
-
-        data = {
-            "company_name": self.transaction.company.name,
-            "company_address": self.transaction.company.address,
-            "company_hotline_phone": self.transaction.company.hotline_phone,
-            "random_goods_with_cost": get_random_goods_with_all_amount(self.transaction.amount),
-            "amount": self.transaction.amount,
-            "date_time": self.created.strftime("%d/%m/%Y %H:%M:%S"),
-            "first_name": self.transaction.card.owner.user.first_name,
-            "last_name": self.transaction.card.owner.user.last_name,
-            "card_number": f"**** **** **** {self.transaction.card.card_number[-4:]}",
-            "phrase": "thank you for shopping!".upper()
-        }
-
-        draw = ImageDraw.Draw(receipt_image)
-        monospace_header = ImageFont.truetype("../NotoSansMono-Regular.ttf", 32)  # TODO: add in static
-        monospace_paragraph = ImageFont.truetype("../NotoSansMono-Regular.ttf", 12)
-
-        # Add company name to receipt
-        company_name_count_symbols, company_name_spaces_count = len(data["company_name"]), len(data["company_name"]) - 1
-        # Using Mono font, every symbol width 16 px and +-3 for space between symbols
-        company_name_width = company_name_count_symbols * 16 + company_name_spaces_count * 3
-
-        next_line_oy = 20
-        draw.text(
-            (ox_middle_coords - company_name_width // 2, receipt_corners_coords["top_left"][1] + next_line_oy),
-            data["company_name"],
-            (0, 0, 0),
-            font=monospace_header
-        )
-
-        # Add address
-        next_line_oy += 70
-        draw.text(
-            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            f'Address: {data["company_address"]}',
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
-
-        # Add phone
-        next_line_oy += 30
-        draw.text(
-            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            f'Telephone: {data["company_hotline_phone"]}',
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
-
-        # Add date and time
-        next_line_oy += 30
-        draw.text(
-            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            f'Date and time: {data["date_time"]}',
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
-
-        # Add list of bought goods
-        next_line_oy += 20
-        draw.text(
-            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            '-----------------------------------------------------',
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
-        next_line_oy += 30
-
-        for product_tuple in data["random_goods_with_cost"]:
-            product_name, product_cost = product_tuple
-            draw.text(
-                (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-                product_name,
-                (0, 0, 0),
-                font=monospace_paragraph
+            receipt_creator = ReceiptBuilder(
+                "media/empty_receipt.jpg",
+                new_receipt_image_path
             )
-            draw.text(
-                (receipt_corners_coords["top_right"][0] - 40, receipt_corners_coords["top_left"][1] + next_line_oy),
-                f'{product_cost}$',
-                (0, 0, 0),
-                font=monospace_paragraph
-            )
-            next_line_oy += 25
 
-        # Add total sum
-        next_line_oy += 5
-        draw.text(
-            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            '-----------------------------------------------------',
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
-        next_line_oy += 20
-        draw.text(
-            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            'AMOUNT',
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
-        draw.text(
-            (receipt_corners_coords["top_right"][0] - 40, receipt_corners_coords["top_left"][1] + next_line_oy),
-            f'{data["amount"]}$',
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
+            data: ReceiptData = {
+                "header": {
+                    "title": self.transaction.company.name,
+                    "address": self.transaction.company.address,
+                    "hotline_phone": self.transaction.company.hotline_phone,
+                    "datetime": self.created
+                },
+                "body": {
+                    "products": get_random_goods_with_all_amount(self.transaction.amount),
+                    "amount": self.transaction.amount,
+                },
+                "footer": {
+                    "card_number": f"**** **** **** {self.transaction.card.card_number[-4:]}",
+                    "wish_phrase": "THANK YOU FOR SHOPPING!"
+                }
+            }
 
-        # Add user card number
-        next_line_oy += 30
-        draw.text(
-            (receipt_corners_coords["top_left"][0] + 10, receipt_corners_coords["top_left"][1] + next_line_oy),
-            f'Payment card: {data["card_number"]}',
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
+            receipt_corners_coords: ReceiptCornerCoords = {
+                "top_left": Coords(197, 83),
+                "top_right": Coords(603, 83),
+                "bottom_left": Coords(191, 1123),
+                "bottom_right": Coords(608, 1120),
+            }
 
-        # Add wish phrase
-        next_line_oy += 30
-
-        # Count width of phrase
-        phrase_count_symbols, phrase_spaces_count = len(data["phrase"]), len(data["phrase"]) - 1
-        phrase_width = phrase_count_symbols * 5 + phrase_spaces_count * 2
-
-        draw.text(
-            (ox_middle_coords - phrase_width // 2, receipt_corners_coords["top_left"][1] + next_line_oy),
-            data["phrase"],
-            (0, 0, 0),
-            font=monospace_paragraph
-        )
-
-        # Generate and save barcode with custom settings
-        options: BarCodeOptions = {
-            "text": json.dumps(data),
-            "format": "PNG",
-            "font_size": 10,
-            "module_width": .7,
-            "module_height": 15.0,
-            "quiet_zone": 1
-        }
-
-        bar_code_image_path = generate_barcode_img(
-            options,
-            f"media/uploads/{year}/{month}/{day}",
-            "barcode.png"
-        )
-        # Add bar code to receipt
-        bar_code = Image.open(bar_code_image_path)
-        bar_code_new_width = receipt_image_width - 100
-        bar_code_resize_coef = bar_code_new_width / bar_code.width
-
-        bar_code = bar_code.resize((bar_code_new_width, int(bar_code.height * bar_code_resize_coef)))
-        bar_code_middle_ox = bar_code.width // 2
-        # TODO: learn how mask work
-        receipt_image.paste(bar_code, (
-            ox_middle_coords - bar_code_middle_ox, receipt_corners_coords["bottom_left"][1] - bar_code.height - 30),
-                            bar_code)
-
-        receipt_image = np.array(receipt_image)
-        cv.imwrite(os.path.join(receipt_image_path, f"receipt_{year}_{month}_{day}_{hour}_{minute}.jpg"), receipt_image)
-
-        return os.path.join(RECEIPTS_ROOT, str(year), str(month), str(day), f"receipt_{year}_{month}_{day}_{hour}_{minute}.jpg")
+            receipt_creator.set_params(data, receipt_corners_coords)
+            receipt_creator.make_receipt()
+            return new_receipt_image_path.replace("media/", "")
+        except Exception as ex:
+            print(f"Error. {str(ex)}")
+            return ""
 
 
 class Transaction(models.Model):
