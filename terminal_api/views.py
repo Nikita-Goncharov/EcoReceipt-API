@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 
 from django.db import transaction as django_transaction
@@ -5,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
+from telegram_bot.bot import send_receipt
 from client_api.views import GetCardBalance
 from database_models.models import Card, Company, Receipt, Transaction
 
@@ -64,7 +66,20 @@ class WriteOffMoney(APIView):
             transaction.company_balance_after = company.balance
             transaction.save()
 
-            transaction.receipt.get_receipt_img()
+            receipt_path = transaction.receipt.get_receipt_img()
+            try:
+                # Try to get the running event loop
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    raise RuntimeError("Event loop is closed")
+            except RuntimeError:
+                # If no event loop exists (or if it was closed), create a new one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # Run the send_photo coroutine in the event loop
+            # here can`t use .run(), because in second time there is error "event loop is closed"
+            loop.run_until_complete(send_receipt(f"media/{receipt_path}"))
             return Response(data={"success": True, "transaction_id": transaction.id, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)

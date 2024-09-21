@@ -7,7 +7,6 @@ urlpatterns = [
     path("register_company/", views.RegisterCompany.as_view()),
     path("login/", views.LoginUser.as_view()),
     path("logout/", views.LogoutUser.as_view()),
-    # TODO: register_company
 
     # get_card_balance - inner view
     path("increase_card_balance/", views.IncreaseCardBalance.as_view()),
