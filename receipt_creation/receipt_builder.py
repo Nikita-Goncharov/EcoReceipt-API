@@ -259,6 +259,7 @@ class ReceiptBuilder:
                 self.ox_middle_coords - bar_code_middle_ox,
                 self.corner_coords["bottom_left"].y - bar_code.height - 30
             )
+            print(barcode_coords)
             self.paste_image(barcode_coords, bar_code.copy())
 
         self.image.save(self.full_receipt_save_path)
@@ -266,8 +267,11 @@ class ReceiptBuilder:
         # last_line_oy = self.corner_coords["top_left"].y + self.receipt_next_line_oy
         #
         # if last_line_oy + bar_code.height + 40 < self.corner_coords["bottom_left"].y:
-        #     print(self.receipt_next_line_oy + bar_code.height + 40,  self.corner_coords["bottom_left"].y)
-        #     height_difference = self.corner_coords["bottom_left"].y - self.receipt_next_line_oy + bar_code.height + 40
+        #     print(last_line_oy + bar_code.height + 40,  self.corner_coords["bottom_left"].y)
+        #     new_height = last_line_oy + bar_code.height + 40
+        #     height_difference = self.corner_coords["bottom_left"].y - new_height
+        #     print(new_height, height_difference)
+        #
         #
         #     self.corner_coords: ReceiptCornerCoords = {
         #         "top_left": self.corner_coords["top_left"],
@@ -283,8 +287,14 @@ class ReceiptBuilder:
         #         ),
         #     }
         #
+        #     self.receipt_width = self.corner_coords["top_right"].x - self.corner_coords["top_left"].x
+        #     self.receipt_height = self.corner_coords["bottom_left"].y - self.corner_coords["top_left"].y
+        #     print(self.receipt_height)
+        #     self.ox_middle_coords = self.corner_coords["top_left"].x + self.receipt_width // 2
+        #     self.receipt_next_line_oy = 20
+        #
         #     self.image = self.original_image.copy()
-        #     self.image = self.image.resize((self.receipt_width, self.receipt_height-height_difference))
+        #     self.image = self.image.resize((self.image.width, self.receipt_height))
         #     self.make_receipt()
         # elif False:  # TODO: check if receipt small
         #     pass
