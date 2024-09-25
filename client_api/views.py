@@ -25,6 +25,7 @@ class RegisterUser(APIView):
                 user = user_serializer.save()
                 profile = Profile()
                 profile.user = user
+                profile.telegram_chat_id = request.data.get("telegram_chat_id", "")
                 profile.save()
                 return Response(data={"success": True, "message": ""})
             else:
@@ -46,7 +47,11 @@ class LoginUser(APIView):
             if not user.check_password(password):
                 return Response(data={"success": False, "message": f"Error. There is no user with that credentials."}, status=400)
 
-            token = Token.objects.create(user=user)
+            tokens = Token.objects.filter(user=user)
+            if tokens.count() != 0:
+                token = tokens.first()
+            else:
+                token = Token.objects.create(user=user)
             return Response(data={"success": True, "token": token.key, "message": ""})
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
