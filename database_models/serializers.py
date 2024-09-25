@@ -68,8 +68,9 @@ class TransactionSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ["user", "created", "updated"]
+        fields = ["user", "telegram_chat_id", "created", "updated"]
         extra_kwargs = {
+            "telegram_chat_id": {"required": False, "default": ""},
             "created": {"read_only": True},
             "updated": {"read_only": True}
         }

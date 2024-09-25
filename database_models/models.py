@@ -14,6 +14,7 @@ from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptCornerCoords
 
 class Profile(models.Model):  # TODO: add fields
     user = models.OneToOneField(to=User, on_delete=models.CASCADE, related_name="profile")
+    telegram_chat_id = models.CharField(max_length=20, null=True, blank=True, default="")  # TODO: telegram user id ???
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
