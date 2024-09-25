@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
-from telegram_bot.bot import send_receipt
+from telegram_bot.bot_send_receipt import send_receipt
 from client_api.views import GetCardBalance
 from database_models.models import Card, Company, Receipt, Transaction
 
@@ -79,7 +79,11 @@ class WriteOffMoney(APIView):
 
             # Run the send_photo coroutine in the event loop
             # here can`t use .run(), because in second time there is error "event loop is closed"
-            loop.run_until_complete(send_receipt(f"media/{receipt_path}"))
+            # TODO: get ip/domain dynamicaly
+            # TODO: new somehow close loop
+            loop.run_until_complete(
+                send_receipt(f"http://192.168.0.105:8000/media/{receipt_path}", card.owner.telegram_chat_id)
+            )
             return Response(data={"success": True, "transaction_id": transaction.id, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)
