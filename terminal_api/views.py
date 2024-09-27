@@ -2,6 +2,7 @@ import asyncio
 from decimal import Decimal
 
 from django.db import transaction as django_transaction
+from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
@@ -67,23 +68,27 @@ class WriteOffMoney(APIView):
             transaction.save()
 
             receipt_path = transaction.receipt.get_receipt_img()
-            try:
-                # Try to get the running event loop
-                loop = asyncio.get_event_loop()
-                if loop.is_closed():
-                    raise RuntimeError("Event loop is closed")
-            except RuntimeError:
-                # If no event loop exists (or if it was closed), create a new one
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
 
-            # Run the send_photo coroutine in the event loop
-            # here can`t use .run(), because in second time there is error "event loop is closed"
-            # TODO: get ip/domain dynamicaly
-            # TODO: new somehow close loop
-            loop.run_until_complete(
-                send_receipt(f"http://192.168.0.105:8000/media/{receipt_path}", card.owner.telegram_chat_id)
-            )
+            # If user logged in, then send receipt to telegram bot
+            tokens = Token.objects.filter(user=card.owner.user)
+            if tokens.count() != 0:
+                try:
+                    # Try to get the running event loop
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        raise RuntimeError("Event loop is closed")
+                except RuntimeError:
+                    # If no event loop exists (or if it was closed), create a new one
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                # Run the send_photo coroutine in the event loop
+                # here can`t use .run(), because in second time there is error "event loop is closed"
+                # TODO: get ip/domain dynamicaly
+                # TODO: new somehow close loop
+                loop.run_until_complete(
+                    send_receipt(f"http://192.168.0.106:8000/media/{receipt_path}", card.owner.telegram_chat_id)
+                )
             return Response(data={"success": True, "transaction_id": transaction.id, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)

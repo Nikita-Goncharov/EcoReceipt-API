@@ -79,7 +79,7 @@ async def get_login_password(message: Message, state: FSMContext):
     if not user_auth_data["is_logged_in"]:
         async with ClientSession() as session:
             async with session.post(
-                    "http://192.168.0.105:8000/client_api/login/",
+                    "http://192.168.0.106:8000/client_api/login/",
                     json={"email": data["email"], "password": data["password"]}
             ) as response:
                 if response.status == 200:
@@ -104,7 +104,7 @@ async def logout_handler(message: Message):
     if user_auth_data["is_logged_in"]:
         async with ClientSession() as session:
             async with session.post(
-                    "http://192.168.0.105:8000/client_api/logout/",
+                    "http://192.168.0.106:8000/client_api/logout/",
                     headers={"Authorization": f'Token {user_auth_data["token"]}'},
             ) as response:
                 if response.status == 200:
@@ -180,7 +180,7 @@ async def get_password(message: Message, state: FSMContext):
     }
     async with ClientSession() as session:
         async with session.post(
-                "http://192.168.0.105:8000/client_api/register_user/",
+                "http://192.168.0.106:8000/client_api/register_user/",
                 json=json_data
         ) as response:
             if response.status == 200:
@@ -214,7 +214,7 @@ async def register_card(message: Message, state: FSMContext):
     }
     async with ClientSession() as session:
         async with session.post(
-                "http://192.168.0.105:8000/client_api/register_card/",
+                "http://192.168.0.106:8000/client_api/register_card/",
                 headers={"Authorization": f'Token {user_auth_data["token"]}'},
                 json=json_data
         ) as response:

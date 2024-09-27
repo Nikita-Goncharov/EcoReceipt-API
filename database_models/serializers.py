@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from .models import Card, Company, Transaction, Profile, Receipt
+from .models import Card, Company, Transaction, Profile, Receipt, Product
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -19,7 +19,15 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-# TODO: add ProductSerializer
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ["name", "description", "cost", "company_owner", "created", "updated"]
+        extra_kwargs = {
+            "created": {"read_only": True},
+            "updated": {"read_only": True}
+        }
+
 
 class CardSerializer(serializers.ModelSerializer):
     class Meta:

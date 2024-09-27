@@ -151,7 +151,7 @@ class IncreaseCompanyBalance(APIView):
             return Response(data={"success": False, "message": "Error. Card does not registered."}, status=404)
 
 
-class GetCardBalance(APIView):  # TODO: inner view
+class GetCardBalance(APIView):  # inner view
     def get(self, request: Request, card_uid: str) -> Response:
         try:
             if check_hex_digit(card_uid):

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Card, Receipt, Profile, Company, Transaction, Product
+from .models import Card, Receipt, Profile, Company, Transaction, Product, ServiceSetting
 
 
 @admin.register(Card)
@@ -30,3 +30,8 @@ class CompanyAdmin(admin.ModelAdmin):
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ("card", "company", "receipt", "card_balance_before", "card_balance_after", "company_balance_before", "company_balance_after", "created", "updated")
+
+
+@admin.register(ServiceSetting)
+class ServiceSettingAdmin(admin.ModelAdmin):
+    list_display = ("name", "value_type", "value", "description", "created", "updated")

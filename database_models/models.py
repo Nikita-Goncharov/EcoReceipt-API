@@ -224,3 +224,21 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"Transaction: {self.card.card_number}"
+
+
+class ServiceSetting(models.Model):
+    class TYPES(models.TextChoices):
+        INT = "int", "INT",
+        TEXT = "str", "TEXT",
+        BOOL = "bool", "BOOL"
+
+    name = models.CharField(max_length=100, null=True, blank=True)
+    value_type = models.CharField(max_length=100, choices=TYPES, default=TYPES.TEXT)
+    value = models.CharField(max_length=200, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Setting: {self.name}"
