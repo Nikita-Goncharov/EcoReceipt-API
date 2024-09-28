@@ -19,24 +19,24 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
     class Meta:
-        model = Product
-        fields = ["name", "description", "cost", "company_owner", "created", "updated"]
+        model = Profile
+        fields = ["user", "telegram_chat_id", "created", "updated"]
         extra_kwargs = {
+            "telegram_chat_id": {"required": False, "default": ""},
             "created": {"read_only": True},
             "updated": {"read_only": True}
         }
 
 
-class CardSerializer(serializers.ModelSerializer):
+class ProductSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Card
-        fields = ["_card_number", "_cvv", "_balance", "_card_uid", "owner", "created", "updated"]
+        model = Product
+        fields = ["name", "description", "cost", "company_owner", "created", "updated"]
         extra_kwargs = {
-            "_card_number": {"read_only": True},
-            "_cvv": {"read_only": True},
-            "_balance": {"read_only": True},
             "created": {"read_only": True},
             "updated": {"read_only": True}
         }
@@ -64,6 +64,9 @@ class CompanySerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    receipt = ReceiptSerializer()
+    company = CompanySerializer()
+
     class Meta:
         model = Transaction
         fields = ["card", "company", "receipt", "card_balance_before", "card_balance_after", "company_balance_before", "company_balance_after", "created", "updated"]
@@ -73,12 +76,18 @@ class TransactionSerializer(serializers.ModelSerializer):
         }
 
 
-class ProfileSerializer(serializers.ModelSerializer):
+class CardSerializer(serializers.ModelSerializer):
+    transactions = TransactionSerializer(many=True)
+    owner = ProfileSerializer()
+
     class Meta:
-        model = Profile
-        fields = ["user", "telegram_chat_id", "created", "updated"]
+        model = Card
+        fields = ["_card_number", "_cvv", "_balance", "_card_uid", "owner", "transactions", "created", "updated"]
         extra_kwargs = {
-            "telegram_chat_id": {"required": False, "default": ""},
+            "_card_number": {"read_only": True},
+            "_cvv": {"read_only": True},
+            "_balance": {"read_only": True},
+            "transactions": {"read_only": True},
             "created": {"read_only": True},
             "updated": {"read_only": True}
         }

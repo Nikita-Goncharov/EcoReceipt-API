@@ -10,7 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from database_models.models import Card, Profile, Company
 from database_models.utils import check_hex_digit
-from database_models.serializers import UserSerializer, CompanySerializer
+from database_models.serializers import UserSerializer, CompanySerializer, CardSerializer
 
 
 class RegisterUser(APIView):
@@ -148,7 +148,7 @@ class IncreaseCompanyBalance(APIView):
             company.save()
             return Response(data={"success": True, "message": ""})
         except ObjectDoesNotExist:
-            return Response(data={"success": False, "message": "Error. Card does not registered."}, status=404)
+            return Response(data={"success": False, "message": "Error. Company does not registered."}, status=404)
 
 
 class GetCardBalance(APIView):  # inner view
@@ -161,6 +161,22 @@ class GetCardBalance(APIView):  # inner view
                 return Response(data={"success": False, "message": "Error. Invalid card UID."}, status=400)
         except ObjectDoesNotExist:
             return Response(data={"success": False, "message": "Error. Card does not registered."}, status=404)
+
+
+class GetUserCardsReceipts(APIView):  # TODO: sort and pagination
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, count: int = 10, page: int = 1) -> Response:
+        try:
+            serializer = CardSerializer(Card.objects.filter(owner=request.user.profile), many=True)
+            # print(serializer.data)
+            return Response(data={"success": True, "data": serializer.data, "message": ""})
+        except Exception as ex:
+            return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+
+
+class GetReceipt(APIView):
+    pass
 
 
 class GetCompanyBalance(APIView):

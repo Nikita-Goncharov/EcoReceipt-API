@@ -12,6 +12,8 @@ urlpatterns = [
     path("increase_card_balance/", views.IncreaseCardBalance.as_view()),
     path("increase_company_balance/", views.IncreaseCompanyBalance.as_view()),
 
+    path("get_receipts_by_cards/", views.GetUserCardsReceipts.as_view())
+
     # TODO:
     # get_company_balance
     # get_user_cards

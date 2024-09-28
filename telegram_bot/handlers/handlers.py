@@ -1,40 +1,15 @@
+import logging
 from aiohttp import ClientSession
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
 from aiogram.filters import CommandStart
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import Message
 from aiogram import F, Router
 
+from keyboards import keyboard_for_anon, keyboard_for_logged_in
+from fsmcontext_types import RegisterUserData, LoginData, RegisterCardData, RegisterCompanyData
 from redis_db import save_user_auth_status, get_user_auth_status
 
 router = Router()
-
-user_logged_in_buttons = [
-    [KeyboardButton(text="Register card"), KeyboardButton(text="Logout")],
-]
-
-user_anon_buttons = [
-    [KeyboardButton(text="Create profile"), KeyboardButton(text="Login")],
-]
-keyboard_for_logged_in = ReplyKeyboardMarkup(keyboard=user_logged_in_buttons, resize_keyboard=True)
-keyboard_for_anon = ReplyKeyboardMarkup(keyboard=user_anon_buttons, resize_keyboard=True)
-
-
-class RegisterUserData(StatesGroup):
-    first_name = State()
-    last_name = State()
-    email = State()
-    password = State()
-    telegram_chat_id = State()
-
-
-class RegisterCardData(StatesGroup):
-    card_uid = State()
-
-
-class LoginData(StatesGroup):
-    email = State()
-    password = State()
 
 
 @router.message(CommandStart())
@@ -88,6 +63,7 @@ async def get_login_password(message: Message, state: FSMContext):
                     await save_user_auth_status(message.from_user.id, True, response_data["token"])
                     keyboard = keyboard_for_logged_in
                 else:
+                    logging.info(f"Error. {await response.json()}")
                     reply = "Error. You were not successfully logged in. Try again."
                     keyboard = keyboard_for_anon
     else:
@@ -112,6 +88,7 @@ async def logout_handler(message: Message):
                     await save_user_auth_status(message.from_user.id)
                     keyboard = keyboard_for_anon
                 else:
+                    logging.info(f"Error. {await response.json()}")
                     reply = "Error. You were not successfully logged out. Try again."
                     keyboard = keyboard_for_logged_in
     else:
@@ -120,7 +97,7 @@ async def logout_handler(message: Message):
     await message.answer(reply, reply_markup=keyboard)
 
 
-@router.message(F.text.lower() == "create profile")
+@router.message(F.text.lower() == "register profile")
 async def register_user(message: Message, state: FSMContext):
     instructions = ("Please send your first name in english.\n"
                     "For example: `Bob`")
@@ -186,6 +163,7 @@ async def get_password(message: Message, state: FSMContext):
             if response.status == 200:
                 reply = "Your user was created"
             else:
+                logging.info(f"Error. {await response.json()}")
                 reply = "Error. Your user was not created. Try again."
 
     await message.answer(reply, parse_mode="Markdown")
@@ -221,7 +199,95 @@ async def register_card(message: Message, state: FSMContext):
             if response.status == 200:
                 reply = "Your card was created"
             else:
+                logging.info(f"Error. {await response.json()}")
                 reply = "Error. Your card was not created. Try again."
+
+    await message.answer(reply, parse_mode="Markdown")
+    await state.clear()
+
+
+@router.message(F.text.lower() == "register company")
+async def register_company(message: Message, state: FSMContext):
+    instructions = ("Please send name of your company in english.\n"
+                    "For example: `Computer store`")
+
+    await message.answer(instructions, parse_mode="Markdown")
+    await state.set_state(RegisterCompanyData.name)
+
+
+@router.message(RegisterCompanyData.name)
+async def get_company_name(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    instructions = ("Now send hotline phone number of your company.\n"
+                    "For example: `+380000000000`")
+
+    await message.answer(instructions, parse_mode="Markdown")
+    await state.set_state(RegisterCompanyData.hotline_phone)
+
+
+@router.message(RegisterCompanyData.hotline_phone)
+async def get_company_hotline_phone(message: Message, state: FSMContext):
+    await state.update_data(hotline_phone=message.text)
+    instructions = ("Now send your company country in english.\n"
+                    "For example: `Ukraine`")
+
+    await message.answer(instructions, parse_mode="Markdown")
+    await state.set_state(RegisterCompanyData.country)
+
+
+@router.message(RegisterCompanyData.country)
+async def get_company_country(message: Message, state: FSMContext):
+    await state.update_data(country=message.text)
+    instructions = ("Now send your company city in english.\n"
+                    "For example: `Kharkiv`")
+
+    await message.answer(instructions, parse_mode="Markdown")
+    await state.set_state(RegisterCompanyData.city)
+
+
+@router.message(RegisterCompanyData.city)
+async def get_company_city(message: Message, state: FSMContext):
+    await state.update_data(city=message.text)
+    instructions = ("Now send your company street in english.\n"
+                    "For example: `Sumska`")
+
+    await message.answer(instructions, parse_mode="Markdown")
+    await state.set_state(RegisterCompanyData.street)
+
+
+@router.message(RegisterCompanyData.street)
+async def get_company_street(message: Message, state: FSMContext):
+    await state.update_data(street=message.text)
+    instructions = ("Now send your company number of building in english.\n"
+                    "For example: `52/2`")
+
+    await message.answer(instructions, parse_mode="Markdown")
+    await state.set_state(RegisterCompanyData.building)
+
+
+@router.message(RegisterCompanyData.building)
+async def get_company_building(message: Message, state: FSMContext):
+    await state.update_data(building=message.text)
+    data = await state.get_data()
+
+    json_data = {
+        "name": data.get("name"),
+        "hotline_phone": data.get("hotline_phone"),
+        "country": data.get("country"),
+        "city": data.get("city"),
+        "street": data.get("street"),
+        "building": data.get("building")
+    }
+    async with ClientSession() as session:
+        async with session.post(
+                "http://192.168.0.106:8000/client_api/register_company/",
+                json=json_data
+        ) as response:
+            if response.status == 200:
+                reply = "Your company was created"
+            else:
+                logging.info(f"Error. {await response.json()}")
+                reply = "Error. Your company was not created. Try again."
 
     await message.answer(reply, parse_mode="Markdown")
     await state.clear()

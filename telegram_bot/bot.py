@@ -10,18 +10,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
+DEBUG = True
+
 bot = Bot(TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
 
 async def main():
-    from handlers.handlers import router
     dp.include_router(router)
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)  # TODO: do not use in production
+    from handlers.handlers import router
+
+    if DEBUG:
+        logging.basicConfig(level=logging.INFO)
+
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

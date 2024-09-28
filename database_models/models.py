@@ -125,7 +125,7 @@ class Company(models.Model):
         token = ""
         for i in range(0, 15):
             index = randint(0, len(valid_token_symbols)-1)
-            token = valid_token_symbols[index]
+            token += valid_token_symbols[index]
 
         self._company_token = token
         self.save()
@@ -208,7 +208,7 @@ class Receipt(models.Model):
 
 
 class Transaction(models.Model):
-    card = models.ForeignKey(to=Card, on_delete=models.DO_NOTHING)
+    card = models.ForeignKey(to=Card, on_delete=models.DO_NOTHING, related_name="transactions")
     company = models.ForeignKey(to=Company, on_delete=models.DO_NOTHING)
     receipt = models.OneToOneField(to=Receipt, on_delete=models.CASCADE, related_name="transaction")
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
