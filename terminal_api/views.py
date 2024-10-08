@@ -1,5 +1,6 @@
 import asyncio
 from decimal import Decimal
+from multiprocessing import Process
 
 from django.db import transaction as django_transaction
 from rest_framework.authtoken.models import Token
@@ -9,12 +10,12 @@ from rest_framework.views import APIView
 
 from telegram_bot.bot_send_receipt import send_receipt
 from client_api.views import GetCardBalance
-from database_models.models import Card, Company, Receipt, Transaction
+from database_models.models import Card, Company, Receipt, Transaction, ServiceSetting
 
 
-# TODO: in error responses add error_code for terminal for error show on lcd
 class WriteOffMoney(APIView):
 
+    # @csrf_exempt
     @django_transaction.atomic
     def post(self, request: Request):
         try:
@@ -23,26 +24,35 @@ class WriteOffMoney(APIView):
             company_token = request.data.get("company_token")
 
             if card_uid is None or write_off_amount is None or company_token is None:
-                return Response(data={"success": False, "message": "Error. Incorrect request body."}, status=400)
+                return Response(data={
+                    "success": False,
+                    "message": "Error. Incorrect request body.",
+                    "terminal_message": "Data is invalid"  # message for showing on terminal lcd (max length 16 symbols)
+                }, status=400)
 
-            # requests.get(f"http://localhost:8000/client_api/get_card_balance/{card_uid}")
             response = GetCardBalance().get(request=request, card_uid=card_uid)
             if response.status_code != 200:
-                return Response(data={"success": False, "message": f"Error. Card UID is incorrect."}, status=404)
+                return Response(data={
+                    "success": False,
+                    "message": f"Error. Card UID is incorrect.",
+                    "terminal_message": "Card is invalid"
+                }, status=404)
 
             card_current_balance = response.data["balance"]
             if card_current_balance < write_off_amount:  # Check if card balance bigger then write off sum
-                return Response(
-                    data={"success": False, "message": f"Error. Card balance lower than write off sum."},
-                    status=404
-                )
+                return Response(data={
+                    "success": False,
+                    "message": f"Error. Card balance lower than write off sum.",
+                    "terminal_message": "Balance is low"
+                }, status=404)
 
             companies = Company.objects.filter(_company_token=company_token)
             if not companies.count():  # Check if company registered in system
-                return Response(
-                    data={"success": False, "message": f"Error. There is no registered company with this token."},
-                    status=404
-                )
+                return Response(data={
+                    "success": False,
+                    "message": f"Error. There is no registered company with this token.",
+                    "terminal_message": "Token is invalid"
+                }, status=404)
 
             card = Card.objects.get(_card_uid=card_uid)
             company = companies.first()
@@ -72,23 +82,20 @@ class WriteOffMoney(APIView):
             # If user logged in, then send receipt to telegram bot
             tokens = Token.objects.filter(user=card.owner.user)
             if tokens.count() != 0:
-                try:
-                    # Try to get the running event loop
-                    loop = asyncio.get_event_loop()
-                    if loop.is_closed():
-                        raise RuntimeError("Event loop is closed")
-                except RuntimeError:
-                    # If no event loop exists (or if it was closed), create a new one
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+                current_site_domain = ServiceSetting.objects.get(name="CURRENT_SITE_DOMAIN").get_value()
+                process = Process(target=asyncio.run, args=(send_receipt(f"{current_site_domain}/media/{receipt_path}", card.owner.telegram_chat_id), ))
+                process.start()  # TODO: should we stop process ??
 
-                # Run the send_photo coroutine in the event loop
-                # here can`t use .run(), because in second time there is error "event loop is closed"
-                # TODO: get ip/domain dynamicaly
-                # TODO: new somehow close loop
-                loop.run_until_complete(
-                    send_receipt(f"http://192.168.0.106:8000/media/{receipt_path}", card.owner.telegram_chat_id)
-                )
-            return Response(data={"success": True, "transaction_id": transaction.id, "message": ""}, status=200)
+            return Response(data={
+                "success": True,
+                "transaction_id": transaction.id,
+                "message": "",
+                "terminal_message": "Payment success"
+            }, status=200)
         except Exception as ex:
-            return Response(data={"success": False, "message": f"Error. {str(ex)}."}, status=500)
+            print(ex)
+            return Response(data={
+                "success": False,
+                "message": f"Error. {str(ex)}.",
+                "terminal_message": "Unexpected error"
+            }, status=500)
