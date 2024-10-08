@@ -9,8 +9,6 @@ from django.contrib.auth.models import User
 from .utils import check_hex_digit, get_random_goods_with_all_amount
 from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptCornerCoords, Coords, ReceiptData
 
-# TODO: models testing
-
 
 class Profile(models.Model):  # TODO: add fields
     user = models.OneToOneField(to=User, on_delete=models.CASCADE, related_name="profile")
@@ -28,6 +26,7 @@ class Card(models.Model):
     _cvv = models.CharField(max_length=3, null=True, blank=True)
     _balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     _card_uid = models.CharField(max_length=8, unique=True, null=True, blank=True)
+    # TODO: add PIN
     owner = models.ForeignKey(to=Profile, on_delete=models.CASCADE)
 
     created = models.DateTimeField(auto_now_add=True)
@@ -118,7 +117,7 @@ class Company(models.Model):
     def address(self):
         return f"{self.country}, {self.city}, {self.street} {self.building}"
 
-    def generate_token(self):
+    def generate_token(self):  # TODO: gen by company data
         # token should contain only with numbers(0-9) and * and #
         # token length should be 15 symbols
         valid_token_symbols = "0123456789*#"
@@ -239,6 +238,17 @@ class ServiceSetting(models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def get_value(self) -> int | str | bool:
+        match self.value_type:
+            case "int":
+                return int(self.value)
+            case "str":
+                return str(self.value)
+            case "bool":
+                return bool(self.value)
+            case _:
+                return self.value
 
     def __str__(self):
         return f"Setting: {self.name}"
