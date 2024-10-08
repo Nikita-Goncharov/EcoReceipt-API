@@ -33,6 +33,11 @@ python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
 ```
 
+## Run tests
+```bash
+python manage.py test
+```
+
 ## API setup on production
 
 <!-- TODO:  -->
