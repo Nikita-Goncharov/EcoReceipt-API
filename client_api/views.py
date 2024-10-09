@@ -183,7 +183,6 @@ class GetUserCardsReceipts(APIView):  # TODO: sort and pagination
     def get(self, request: Request, count: int = 10, page: int = 1) -> Response:
         try:
             serializer = CardSerializer(Card.objects.filter(owner=request.user.profile), many=True)
-            print(serializer.data)
             return Response(data={"success": True, "data": serializer.data, "message": ""})
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
