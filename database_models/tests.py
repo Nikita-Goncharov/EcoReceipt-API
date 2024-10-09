@@ -39,6 +39,7 @@ class CardTestCase(TestCase):
         self.card.generate_cvv()
         self.card.generate_card_number()
         self.card.card_uid = "b2af5522"
+        self.card.save()
 
     def test_card_values(self):
         self.assertEqual(self.card.owner, self.profile)
@@ -75,9 +76,9 @@ class CompanyTestCase(TestCase):
         self.company = Company.objects.create(
             name="Company",
             hotline_phone="+380000000000",
-            country="Ukraine",
-            city="Kharkiv",
-            street="Sumska",
+            country="Country",
+            city="City",
+            street="Street",
             building="12"
         )
         self.company.generate_token()
@@ -86,9 +87,9 @@ class CompanyTestCase(TestCase):
         self.assertEqual(self.company.name, "Company")
         self.assertEqual(self.company.hotline_phone, "+380000000000")
 
-        self.assertEqual(self.company.country, "Ukraine")
-        self.assertEqual(self.company.city, "Kharkiv")
-        self.assertEqual(self.company.street, "Sumska")
+        self.assertEqual(self.company.country, "Country")
+        self.assertEqual(self.company.city, "City")
+        self.assertEqual(self.company.street, "Street")
         self.assertEqual(self.company.building, "12")
 
         self.assertEqual(len(self.company.company_token), 15)
@@ -116,7 +117,7 @@ class CompanyTestCase(TestCase):
         self.assertEqual(city_max_length, 40)
         self.assertEqual(street_max_length, 40)
         self.assertEqual(building_max_length, 10)
-        self.assertEqual(self.company.address, "Ukraine, Kharkiv, Sumska 12")
+        self.assertEqual(self.company.address, "Country, City, Street 12")
 
     def test_created_updated_fields(self):
         check_created_updated_fields(self.company)
@@ -127,9 +128,9 @@ class ProductTestCase(TestCase):
         self.company = Company.objects.create(
             name="Company",
             hotline_phone="+380000000000",
-            country="Ukraine",
-            city="Kharkiv",
-            street="Sumska",
+            country="Country",
+            city="City",
+            street="Street",
             building="12"
         )
         self.product = Product.objects.create(name="Product1", description="Description", company_owner=self.company)
@@ -168,13 +169,14 @@ class TransactionTestCase(TestCase):
         self.card.generate_cvv()
         self.card.generate_card_number()
         self.card.card_uid = "b2af5522"
+        self.card.save()
 
         self.company = Company.objects.create(
             name="Company",
             hotline_phone="+380000000000",
-            country="Ukraine",
-            city="Kharkiv",
-            street="Sumska",
+            country="Country",
+            city="City",
+            street="Street",
             building="12"
         )
 

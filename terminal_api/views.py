@@ -15,12 +15,11 @@ from database_models.models import Card, Company, Receipt, Transaction, ServiceS
 
 class WriteOffMoney(APIView):
 
-    # @csrf_exempt
     @django_transaction.atomic
     def post(self, request: Request):
         try:
             card_uid = request.data.get("card_uid")
-            write_off_amount = request.data.get("amount")
+            write_off_amount = Decimal(request.data.get("amount", 0))  # TODO: check if write_off_amount is numeric
             company_token = request.data.get("company_token")
 
             if card_uid is None or write_off_amount is None or company_token is None:
@@ -39,12 +38,12 @@ class WriteOffMoney(APIView):
                 }, status=404)
 
             card_current_balance = response.data["balance"]
-            if card_current_balance < write_off_amount:  # Check if card balance bigger then write off sum
+            if Decimal(card_current_balance) < write_off_amount:  # Check if card balance bigger then write off sum
                 return Response(data={
                     "success": False,
                     "message": f"Error. Card balance lower than write off sum.",
                     "terminal_message": "Balance is low"
-                }, status=404)
+                }, status=400)
 
             companies = Company.objects.filter(_company_token=company_token)
             if not companies.count():  # Check if company registered in system
@@ -67,8 +66,8 @@ class WriteOffMoney(APIView):
             transaction.card_balance_before = card.balance
             transaction.company_balance_before = company.balance
 
-            card.balance = card.balance - Decimal(write_off_amount)
-            company.balance = company.balance + Decimal(write_off_amount)
+            card.balance = card.balance - write_off_amount
+            company.balance = company.balance + write_off_amount
 
             card.save()
             company.save()

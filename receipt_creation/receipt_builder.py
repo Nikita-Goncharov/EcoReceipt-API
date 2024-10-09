@@ -254,12 +254,12 @@ class ReceiptBuilder:
 
             bar_code = bar_code.resize((bar_code_new_width, int(bar_code.height * bar_code_resize_coef)))
             bar_code_middle_ox = bar_code.width // 2
-            # print(bar_code.height)
+
             barcode_coords: Coords = Coords(
                 self.ox_middle_coords - bar_code_middle_ox,
                 self.corner_coords["bottom_left"].y - bar_code.height - 30
             )
-            print(barcode_coords)
+
             self.paste_image(barcode_coords, bar_code.copy())
 
         self.image.save(self.full_receipt_save_path)

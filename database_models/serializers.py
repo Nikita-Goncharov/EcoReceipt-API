@@ -37,6 +37,9 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ["name", "description", "cost", "company_owner", "created", "updated"]
         extra_kwargs = {
+            "name": {"required": True},
+            "description": {"required": True},
+
             "created": {"read_only": True},
             "updated": {"read_only": True}
         }
@@ -57,6 +60,13 @@ class CompanySerializer(serializers.ModelSerializer):
         model = Company
         fields = ["name", "_balance", "hotline_phone", "country", "city", "street", "building", "created", "updated"]
         extra_kwargs = {
+            "name": {"required": True},
+            "hotline_phone": {"required": True},
+            "country": {"required": True},
+            "city": {"required": True},
+            "street": {"required": True},
+            "building": {"required": True},
+
             "_balance": {"read_only": True},
             "created": {"read_only": True},
             "updated": {"read_only": True}
