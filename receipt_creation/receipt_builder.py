@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from datetime import datetime
 from typing import TypedDict, NamedTuple
 from decimal import Decimal
@@ -33,21 +34,26 @@ class DateTimeAndDecimalEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, obj)
 
 
+class ReceiptDataItem(NamedTuple):
+    data: str | datetime | Decimal | list[tuple[str, Decimal]]
+    height: int
+
+
 class ReceiptHeader(TypedDict):
-    title: str
-    address: str
-    hotline_phone: str
-    datetime: datetime
+    title: ReceiptDataItem
+    address: ReceiptDataItem
+    hotline_phone: ReceiptDataItem
+    datetime: ReceiptDataItem
 
 
 class ReceiptBody(TypedDict):
-    products: list[tuple[str, Decimal]]
-    amount: Decimal
+    products: ReceiptDataItem
+    amount: ReceiptDataItem
 
 
 class ReceiptFooter(TypedDict):
-    card_number: str
-    wish_phrase: str
+    card_number: ReceiptDataItem
+    wish_phrase: ReceiptDataItem
 
 
 class ReceiptData(TypedDict):
@@ -69,26 +75,34 @@ class ReceiptCornerCoords(TypedDict):
 
 
 class ReceiptBuilder:
-    def __init__(self, empty_receipt_path: str, full_receipt_save_path: str):
-        """ Attention. This class do not create directories in empty_receipt_path and full_receipt_save_path.
+    def __init__(self, receipt_background_path: str, exact_receipt_path: str, full_receipt_save_path: str):
+        """ Attention. This class do not create directories in receipt_background_path, exact_receipt_path and full_receipt_save_path.
             They should be already created.
 
         """
-
-        if os.path.exists(empty_receipt_path):
-            self.empty_receipt_path = empty_receipt_path
-            self.original_image = Image.open(empty_receipt_path)
-            self.image = self.original_image.copy()
-            self.receipt_draw = ImageDraw.Draw(self.image)
+        self.bar_code = None
+        if os.path.exists(exact_receipt_path):
+            self.exact_receipt_path = exact_receipt_path
+            self.exact_receipt_original = Image.open(exact_receipt_path)
+            self.exact_receipt = self.exact_receipt_original.copy()
+            self.exact_receipt_draw = ImageDraw.Draw(self.exact_receipt)
         else:
-            raise Exception("Error. Empty receipt path is not valid")
+            raise Exception("Error. Exact receipt path is not valid")
+
+        if os.path.exists(receipt_background_path):
+            self.receipt_background_path = receipt_background_path
+            self.receipt_background_original = Image.open(receipt_background_path)
+            self.receipt_background = self.receipt_background_original.copy()
+        else:
+            raise Exception("Error. Receipt background path is not valid")
+
         save_receipt_path = os.path.dirname(full_receipt_save_path)
         if os.path.exists(save_receipt_path):
             self.full_receipt_save_path = full_receipt_save_path
         else:
             raise Exception("Error. Full receipt path is not valid")
 
-    def set_params(self, data: ReceiptData, corner_coords: ReceiptCornerCoords):
+    def set_params(self, data: ReceiptData):
         self.monospace_header = ImageFont.truetype("./internal_fonts/NotoSansMono-Regular.ttf", 32)
         self.monospace_paragraph = ImageFont.truetype("./internal_fonts/NotoSansMono-Regular.ttf", 12)
         self.header_symbol_width = 16  # 3  -  count of pixels between symbols
@@ -96,17 +110,18 @@ class ReceiptBuilder:
 
         self.data = data
 
-        self.corner_coords = corner_coords
-        self.receipt_width = self.corner_coords["top_right"].x - self.corner_coords["top_left"].x
-        self.receipt_height = self.corner_coords["bottom_left"].y - self.corner_coords["top_left"].y
-        self.ox_middle_coords = self.corner_coords["top_left"].x + self.receipt_width // 2
+        self.receipt_width = self.exact_receipt.width
+        self.receipt_height = self.exact_receipt.height
+        self.ox_middle_coords = self.receipt_width // 2
         self.receipt_next_line_oy = 20
 
     def add_receipt_sections(self, coords: Coords, text: str, font: ImageFont.FreeTypeFont | None = None, color: tuple = (0, 0, 0)):
         if font is None:
             font = self.monospace_paragraph
 
-        self.receipt_draw.text(
+        logging.log(logging.INFO, text)
+        logging.log(logging.INFO, f"Add text by coords: {(coords.x, coords.y)}")
+        self.exact_receipt_draw.text(
             coords,
             text,
             color,
@@ -114,128 +129,11 @@ class ReceiptBuilder:
         )
 
     def paste_image(self, coords: Coords, img: Image):
-        self.image.paste(img, (coords.x, coords.y), img)
+        self.exact_receipt.paste(img, (coords.x, coords.y), img)
 
-    def make_receipt(self):
-        receipt_datetime = self.data["header"]["datetime"]
+    def generate_barcode_img(self):
+        receipt_datetime = self.data["header"]["datetime"].data
         year, month, day, hour, minute = receipt_datetime.year, receipt_datetime.month, receipt_datetime.day, receipt_datetime.hour, receipt_datetime.minute
-        # TODO: paste it in receipt photo if need change height
-        # TODO: Add few layouts for receipts
-
-        # Add company name to receipt
-        company_name_count_symbols = len(self.data["header"]["title"])
-        company_name_spaces_count = company_name_count_symbols - 1
-        # Using Mono font, every symbol width 16 px and +-3 for space between symbols
-        company_name_width = company_name_count_symbols * 16 + company_name_spaces_count * 3
-
-        coords: Coords = Coords(
-            self.ox_middle_coords - company_name_width // 2,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-        self.add_receipt_sections(coords, self.data["header"]["title"], self.monospace_header)
-        self.receipt_next_line_oy += 70
-
-        # Add address
-        coords: Coords = Coords(
-            self.corner_coords["top_left"].x + 10,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-        self.add_receipt_sections(coords, f'Address: {self.data["header"]["address"]}')
-        self.receipt_next_line_oy += 30
-
-        # Add phone
-        coords: Coords = Coords(
-            self.corner_coords["top_left"].x + 10,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-
-        self.add_receipt_sections(coords, f'Telephone: {self.data["header"]["hotline_phone"]}')
-        self.receipt_next_line_oy += 30
-
-        # Add date and time
-        coords: Coords = Coords(
-            self.corner_coords["top_left"].x + 10,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-
-        self.add_receipt_sections(
-            coords,
-            f'Date and time: {self.data["header"]["datetime"].strftime("%d/%m/%Y %H:%M:%S")}'
-        )
-        self.receipt_next_line_oy += 20
-
-        # Add list of bought goods
-        coords: Coords = Coords(
-            self.corner_coords["top_left"].x + 10,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-
-        self.add_receipt_sections(coords, "-----------------------------------------------------")
-        self.receipt_next_line_oy += 30
-
-        for product_tuple in self.data["body"]["products"]:
-            product_name, product_cost = product_tuple
-            coords: Coords = Coords(
-                self.corner_coords["top_left"].x + 10,
-                self.corner_coords["top_left"].y + self.receipt_next_line_oy
-            )
-            self.add_receipt_sections(coords, product_name)
-
-            coords: Coords = Coords(
-                self.corner_coords["top_right"].x - 40,
-                self.corner_coords["top_left"].y + self.receipt_next_line_oy
-            )
-            self.add_receipt_sections(coords, f'{round(product_cost, 2)}$')
-
-            self.receipt_next_line_oy += 25
-
-        self.receipt_next_line_oy += 5
-
-        coords: Coords = Coords(
-            self.corner_coords["top_left"].x + 10,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-
-        self.add_receipt_sections(coords, "-----------------------------------------------------")
-        self.receipt_next_line_oy += 20
-
-        # Add total sum
-        coords: Coords = Coords(
-            self.corner_coords["top_left"].x + 10,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-
-        self.add_receipt_sections(coords, "AMOUNT")
-
-        coords: Coords = Coords(
-            self.corner_coords["top_right"].x - 40,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-
-        self.add_receipt_sections(coords, f'{round(self.data["body"]["amount"], 2)}$')
-        self.receipt_next_line_oy += 30
-
-        # Add user card number
-        coords: Coords = Coords(
-            self.corner_coords["top_left"].x + 10,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-
-        self.add_receipt_sections(coords, f'Payment card: {self.data["footer"]["card_number"]}')
-        self.receipt_next_line_oy += 30
-
-        # Add wish phrase
-        phrase_count_symbols = len(self.data["footer"]["wish_phrase"])
-        phrase_spaces_count = phrase_count_symbols - 1
-        phrase_width = phrase_count_symbols * 5 + phrase_spaces_count * 2
-
-        coords: Coords = Coords(
-            self.ox_middle_coords - phrase_width // 2,
-            self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        )
-
-        self.add_receipt_sections(coords, self.data["footer"]["wish_phrase"])
-        self.receipt_next_line_oy += 30
 
         options: BarCodeOptions = {
             "text": json.dumps(self.data, cls=DateTimeAndDecimalEncoder),
@@ -246,56 +144,184 @@ class ReceiptBuilder:
             "quiet_zone": 1
         }
 
-        barcode_save_path = os.path.join(os.path.dirname(self.full_receipt_save_path), f"barcode_{year}_{month}_{day}_{hour}_{minute}.png")
+        barcode_save_path = os.path.join(os.path.dirname(self.full_receipt_save_path),
+                                         f"barcode_{year}_{month}_{day}_{hour}_{minute}.png")
         bar_code = generate_barcode_img(options, barcode_save_path)
         if bar_code is not None:
-            bar_code_new_width = self.receipt_width - 100
-            bar_code_resize_coef = bar_code_new_width / bar_code.width
+            self.bar_code_new_width = self.receipt_width - 100
+            bar_code_resize_coef = self.bar_code_new_width / bar_code.width
+            self.bar_code_new_height = int(bar_code.height * bar_code_resize_coef)
 
-            bar_code = bar_code.resize((bar_code_new_width, int(bar_code.height * bar_code_resize_coef)))
-            bar_code_middle_ox = bar_code.width // 2
+            bar_code = bar_code.resize((self.bar_code_new_width, self.bar_code_new_height))
+            self.bar_code_middle_ox = bar_code.width // 2
+            self.bar_code = bar_code
 
-            barcode_coords: Coords = Coords(
-                self.ox_middle_coords - bar_code_middle_ox,
-                self.corner_coords["bottom_left"].y - bar_code.height - 30
+    def calc_receipt_content_height(self):
+        receipt_data_height = self.receipt_next_line_oy
+        receipt_data_height += self.data["header"]["title"].height
+        receipt_data_height += self.data["header"]["address"].height
+        receipt_data_height += self.data["header"]["hotline_phone"].height
+        receipt_data_height += self.data["header"]["datetime"].height
+
+        receipt_data_height += self.data["body"]["products"].height
+        receipt_data_height += self.data["body"]["amount"].height
+
+        receipt_data_height += self.data["footer"]["card_number"].height
+        receipt_data_height += self.data["footer"]["wish_phrase"].height
+
+        receipt_data_height += self.bar_code_new_height + 30  # + bottom padding on receipt
+        logging.log(logging.INFO, f"Needed receipt height: {receipt_data_height}")
+        return receipt_data_height
+
+    def resize_receipt_img(self):
+        needed_receipt_height = self.calc_receipt_content_height()
+        self.exact_receipt = self.exact_receipt.resize((self.receipt_width, needed_receipt_height))
+        self.exact_receipt_draw = ImageDraw.Draw(self.exact_receipt)
+
+        self.receipt_width = self.exact_receipt.width
+        self.receipt_height = self.exact_receipt.height
+        self.ox_middle_coords = self.receipt_width // 2
+
+        logging.log(logging.INFO, f"Resized receipt w - {self.receipt_width}, h - {self.receipt_height}, middle_ox - {self.ox_middle_coords}")
+
+    def add_receipt_background(self):
+        self.receipt_background = self.receipt_background.resize((self.receipt_width+50, self.receipt_height+50))
+        self.receipt_background.paste(self.exact_receipt, (25, 25))
+        self.receipt_background.save(self.full_receipt_save_path)
+
+    def fill_receipt_img(self):
+        # Add company name to receipt
+        company_name_count_symbols = len(self.data["header"]["title"].data)
+        company_name_spaces_count = company_name_count_symbols - 1
+        # Using Mono font, every symbol width 16 px and +-3 for space between symbols
+        company_name_width = company_name_count_symbols * 16 + company_name_spaces_count * 3
+
+        coords: Coords = Coords(
+            self.ox_middle_coords - company_name_width // 2,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Company name receipt coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, self.data["header"]["title"].data, self.monospace_header)
+        self.receipt_next_line_oy += 70
+
+        # Add address
+        coords: Coords = Coords(
+            10,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Company address receipt coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, f'Address: {self.data["header"]["address"].data}')
+        self.receipt_next_line_oy += 30
+
+        # Add phone
+        coords: Coords = Coords(
+            10,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Company phone receipt coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, f'Telephone: {self.data["header"]["hotline_phone"].data}')
+        self.receipt_next_line_oy += 30
+
+        # Add date and time
+        coords: Coords = Coords(
+            10,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Receipt datetime coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(
+            coords,
+            f'Date and time: {self.data["header"]["datetime"].data.strftime("%d/%m/%Y %H:%M:%S")}'
+        )
+        self.receipt_next_line_oy += 20
+
+        # Add list of bought goods
+        coords: Coords = Coords(
+            10,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Start line of list of products coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, "-----------------------------------------------------")
+        self.receipt_next_line_oy += 30
+
+        for product_tuple in self.data["body"]["products"].data:
+            product_name, product_cost = product_tuple
+            coords: Coords = Coords(
+                10,
+                self.receipt_next_line_oy
             )
+            logging.log(logging.INFO, f"Product coords: x - {coords.x}, y - {coords.y}")
+            self.add_receipt_sections(coords, product_name)
 
-            self.paste_image(barcode_coords, bar_code.copy())
+            # TODO: align all costs by right side of receipt (10.00$ and 1.00$, "$" should have same position)
+            coords: Coords = Coords(
+                self.receipt_width-50,
+                self.receipt_next_line_oy
+            )
+            self.add_receipt_sections(coords, f'{round(product_cost, 2)}$')
 
-        self.image.save(self.full_receipt_save_path)
+            self.receipt_next_line_oy += 25
 
-        # last_line_oy = self.corner_coords["top_left"].y + self.receipt_next_line_oy
-        #
-        # if last_line_oy + bar_code.height + 40 < self.corner_coords["bottom_left"].y:
-        #     print(last_line_oy + bar_code.height + 40,  self.corner_coords["bottom_left"].y)
-        #     new_height = last_line_oy + bar_code.height + 40
-        #     height_difference = self.corner_coords["bottom_left"].y - new_height
-        #     print(new_height, height_difference)
-        #
-        #
-        #     self.corner_coords: ReceiptCornerCoords = {
-        #         "top_left": self.corner_coords["top_left"],
-        #         "top_right": self.corner_coords["top_right"],
-        #
-        #         "bottom_left": Coords(
-        #             self.corner_coords["bottom_left"].x,
-        #             self.corner_coords["bottom_left"].y - height_difference
-        #         ),
-        #         "bottom_right": Coords(
-        #             self.corner_coords["bottom_left"].x,
-        #             self.corner_coords["bottom_right"].y - height_difference
-        #         ),
-        #     }
-        #
-        #     self.receipt_width = self.corner_coords["top_right"].x - self.corner_coords["top_left"].x
-        #     self.receipt_height = self.corner_coords["bottom_left"].y - self.corner_coords["top_left"].y
-        #     print(self.receipt_height)
-        #     self.ox_middle_coords = self.corner_coords["top_left"].x + self.receipt_width // 2
-        #     self.receipt_next_line_oy = 20
-        #
-        #     self.image = self.original_image.copy()
-        #     self.image = self.image.resize((self.image.width, self.receipt_height))
-        #     self.make_receipt()
-        # elif False:  # TODO: check if receipt small
-        #     pass
+        self.receipt_next_line_oy += 5
+
+        coords: Coords = Coords(
+            10,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"End line of list of products coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, "-----------------------------------------------------")
+        self.receipt_next_line_oy += 20
+
+        # Add total sum
+        coords: Coords = Coords(
+            10,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Text 'AMOUNT' coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, "AMOUNT")
+
+        coords: Coords = Coords(
+            self.receipt_width-50,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Amount sum coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, f'{round(self.data["body"]["amount"].data, 2)}$')
+        self.receipt_next_line_oy += 30
+
+        # Add user card number
+        coords: Coords = Coords(
+            10,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Payment card coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, f'Payment card: {self.data["footer"]["card_number"].data}')
+        self.receipt_next_line_oy += 30
+
+        # Add wish phrase
+        phrase_count_symbols = len(self.data["footer"]["wish_phrase"].data)
+        phrase_spaces_count = phrase_count_symbols - 1
+        phrase_width = phrase_count_symbols * 5 + phrase_spaces_count * 2
+
+        coords: Coords = Coords(
+            self.ox_middle_coords - phrase_width // 2,
+            self.receipt_next_line_oy
+        )
+        logging.log(logging.INFO, f"Wish phrase coords: x - {coords.x}, y - {coords.y}")
+        self.add_receipt_sections(coords, self.data["footer"]["wish_phrase"].data)
+        self.receipt_next_line_oy += 30  # TODO: get sizes from data dict
+
+        if self.bar_code is not None:
+            barcode_coords: Coords = Coords(
+                self.ox_middle_coords - self.bar_code_middle_ox,
+                self.receipt_height - self.bar_code.height - 30
+            )
+            logging.log(logging.INFO, f"Barcode coords: x - {barcode_coords.x}, y - {barcode_coords.y}")
+            self.paste_image(barcode_coords, self.bar_code.copy())
+
+        self.exact_receipt.save(self.full_receipt_save_path)
+
+    def make_receipt(self):
+        self.generate_barcode_img()
+        self.resize_receipt_img()
+        self.fill_receipt_img()
+        self.add_receipt_background()
         return os.path.join(self.full_receipt_save_path)

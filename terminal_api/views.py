@@ -1,4 +1,3 @@
-import asyncio
 from decimal import Decimal
 from multiprocessing import Process
 
@@ -8,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
-from telegram_bot.bot_send_receipt import send_receipt
+from telegram_bot.bot_send_receipt import run_async_in_process
 from client_api.views import GetCardBalance
 from database_models.models import Card, Company, Receipt, Transaction, ServiceSetting
 
@@ -82,7 +81,7 @@ class WriteOffMoney(APIView):
             tokens = Token.objects.filter(user=card.owner.user)
             if tokens.count() != 0:
                 current_site_domain = ServiceSetting.objects.get(name="CURRENT_SITE_DOMAIN").get_value()
-                process = Process(target=asyncio.run, args=(send_receipt(f"{current_site_domain}/media/{receipt_path}", card.owner.telegram_chat_id), ))
+                process = Process(target=run_async_in_process, args=(f"{current_site_domain}/media/{receipt_path}", card.owner.telegram_chat_id))
                 process.start()  # TODO: should we stop process ??
 
             return Response(data={

@@ -7,7 +7,7 @@ from django.db.utils import IntegrityError
 from django.contrib.auth.models import User
 
 from .utils import check_hex_digit, get_random_goods_with_all_amount
-from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptCornerCoords, Coords, ReceiptData
+from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptCornerCoords, Coords, ReceiptData, ReceiptDataItem
 
 
 class Profile(models.Model):  # TODO: add fields
@@ -170,35 +170,31 @@ class Receipt(models.Model):
                 os.makedirs(os.path.dirname(new_receipt_image_path))
 
             receipt_creator = ReceiptBuilder(
-                "media/empty_receipt.jpg",
+                "media/receipt_background.jpg",
+                "media/exact_receipt.jpg",
                 new_receipt_image_path
             )
+            products = get_random_goods_with_all_amount(self.transaction.amount)
+            products_part_height = 30 + len(products) * 25 + 5  # top border height + products height + bottom border height
 
             data: ReceiptData = {
                 "header": {
-                    "title": self.transaction.company.name,
-                    "address": self.transaction.company.address,
-                    "hotline_phone": self.transaction.company.hotline_phone,
-                    "datetime": self.created
+                    "title": ReceiptDataItem(self.transaction.company.name, 70),
+                    "address": ReceiptDataItem(self.transaction.company.address, 30),
+                    "hotline_phone": ReceiptDataItem(self.transaction.company.hotline_phone, 30),
+                    "datetime": ReceiptDataItem(self.created, 20)
                 },
                 "body": {
-                    "products": get_random_goods_with_all_amount(self.transaction.amount),
-                    "amount": self.transaction.amount,
+                    "products": ReceiptDataItem(products, products_part_height),
+                    "amount": ReceiptDataItem(self.transaction.amount, 30)
                 },
                 "footer": {
-                    "card_number": f"**** **** **** {self.transaction.card.card_number[-4:]}",
-                    "wish_phrase": "THANK YOU FOR SHOPPING!"
+                    "card_number": ReceiptDataItem(f"**** **** **** {self.transaction.card.card_number[-4:]}", 30),
+                    "wish_phrase": ReceiptDataItem("THANK YOU FOR SHOPPING!", 30)
                 }
             }
 
-            receipt_corners_coords: ReceiptCornerCoords = {
-                "top_left": Coords(197, 83),
-                "top_right": Coords(603, 83),
-                "bottom_left": Coords(191, 1123),
-                "bottom_right": Coords(608, 1120),
-            }
-
-            receipt_creator.set_params(data, receipt_corners_coords)
+            receipt_creator.set_params(data)
             receipt_creator.make_receipt()
             return new_receipt_image_path.replace("media/", "")
         except Exception as ex:

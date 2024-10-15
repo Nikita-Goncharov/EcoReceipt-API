@@ -96,7 +96,7 @@ class WriteOffMoneyViewTestCase(TestCase):
         self.assertEqual(transaction.company_balance_before, Decimal(0))
         self.assertEqual(transaction.company_balance_after, Decimal(10))
 
-        # Removing of receipt and barcode image after tests
+        # Removing receipt and barcode image after tests
         receipt_path = f"media/{transaction.receipt.img}"
         barcode_path = str(transaction.receipt.img).replace("receipt", "barcode").replace("jpg", "png.png")
         barcode_path = f"media/{barcode_path}"
