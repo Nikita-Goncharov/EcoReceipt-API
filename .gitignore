@@ -4,6 +4,7 @@
 .env
 *.sqlite3
 *.log
+*.log.*
 __pycache__/
 
 server_8000.sh

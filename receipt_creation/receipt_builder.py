@@ -169,15 +169,29 @@ class ReceiptBuilder:
         receipt_data_height += self.data["footer"]["card_number"].height
         receipt_data_height += self.data["footer"]["wish_phrase"].height
 
-        receipt_data_height += self.bar_code_new_height + 30  # + bottom padding on receipt
+        receipt_data_height += 30 + self.bar_code_new_height + 30  # + top and bottom padding on receipt
         logging.log(logging.INFO, f"Needed receipt height: {receipt_data_height}")
         return receipt_data_height
 
     def resize_receipt_img(self):
         needed_receipt_height = self.calc_receipt_content_height()
-        self.exact_receipt = self.exact_receipt.resize((self.receipt_width, needed_receipt_height))
-        self.exact_receipt_draw = ImageDraw.Draw(self.exact_receipt)
 
+        bottom_height = top_height = int(self.exact_receipt.height * 0.2)
+        middle_height = self.receipt_height - top_height - bottom_height
+
+        top = self.exact_receipt.crop((0, 0, self.receipt_width, top_height))
+        middle = self.exact_receipt.crop((0, top_height, self.receipt_width, top_height + middle_height))
+        bottom = self.exact_receipt.crop((0, top_height + middle_height, self.receipt_width, self.receipt_height))
+
+        new_middle_height = needed_receipt_height - top_height - bottom_height
+        middle_resized = middle.resize((middle.width, new_middle_height))
+        self.exact_receipt = Image.new('RGB', (self.receipt_width, top_height + new_middle_height + bottom_height))
+
+        self.exact_receipt.paste(top, (0, 0))
+        self.exact_receipt.paste(middle_resized, (0, top_height))
+        self.exact_receipt.paste(bottom, (0, top_height + new_middle_height))
+
+        self.exact_receipt_draw = ImageDraw.Draw(self.exact_receipt)
         self.receipt_width = self.exact_receipt.width
         self.receipt_height = self.exact_receipt.height
         self.ox_middle_coords = self.receipt_width // 2
@@ -194,15 +208,16 @@ class ReceiptBuilder:
         company_name_count_symbols = len(self.data["header"]["title"].data)
         company_name_spaces_count = company_name_count_symbols - 1
         # Using Mono font, every symbol width 16 px and +-3 for space between symbols
-        company_name_width = company_name_count_symbols * 16 + company_name_spaces_count * 3
+        company_name_width = company_name_count_symbols * self.header_symbol_width + company_name_spaces_count * 3
 
         coords: Coords = Coords(
             self.ox_middle_coords - company_name_width // 2,
             self.receipt_next_line_oy
         )
         logging.log(logging.INFO, f"Company name receipt coords: x - {coords.x}, y - {coords.y}")
-        self.add_receipt_sections(coords, self.data["header"]["title"].data, self.monospace_header)
-        self.receipt_next_line_oy += 70
+        title_data, title_height = self.data["header"]["title"]
+        self.add_receipt_sections(coords, title_data, self.monospace_header)
+        self.receipt_next_line_oy += title_height
 
         # Add address
         coords: Coords = Coords(
@@ -210,8 +225,9 @@ class ReceiptBuilder:
             self.receipt_next_line_oy
         )
         logging.log(logging.INFO, f"Company address receipt coords: x - {coords.x}, y - {coords.y}")
-        self.add_receipt_sections(coords, f'Address: {self.data["header"]["address"].data}')
-        self.receipt_next_line_oy += 30
+        address_data, address_height = self.data["header"]["address"]
+        self.add_receipt_sections(coords, f'Address: {address_data}')
+        self.receipt_next_line_oy += address_height
 
         # Add phone
         coords: Coords = Coords(
@@ -219,8 +235,9 @@ class ReceiptBuilder:
             self.receipt_next_line_oy
         )
         logging.log(logging.INFO, f"Company phone receipt coords: x - {coords.x}, y - {coords.y}")
-        self.add_receipt_sections(coords, f'Telephone: {self.data["header"]["hotline_phone"].data}')
-        self.receipt_next_line_oy += 30
+        phone_data, phone_height = self.data["header"]["hotline_phone"]
+        self.add_receipt_sections(coords, f'Telephone: {phone_data}')
+        self.receipt_next_line_oy += phone_height
 
         # Add date and time
         coords: Coords = Coords(
@@ -228,11 +245,12 @@ class ReceiptBuilder:
             self.receipt_next_line_oy
         )
         logging.log(logging.INFO, f"Receipt datetime coords: x - {coords.x}, y - {coords.y}")
+        datetime_data, datetime_height = self.data["header"]["datetime"]
         self.add_receipt_sections(
             coords,
-            f'Date and time: {self.data["header"]["datetime"].data.strftime("%d/%m/%Y %H:%M:%S")}'
+            f'Date and time: {datetime_data.strftime("%d/%m/%Y %H:%M:%S")}'
         )
-        self.receipt_next_line_oy += 20
+        self.receipt_next_line_oy += datetime_height
 
         # Add list of bought goods
         coords: Coords = Coords(
@@ -252,12 +270,14 @@ class ReceiptBuilder:
             logging.log(logging.INFO, f"Product coords: x - {coords.x}, y - {coords.y}")
             self.add_receipt_sections(coords, product_name)
 
-            # TODO: align all costs by right side of receipt (10.00$ and 1.00$, "$" should have same position)
+            cost_str = f'{round(product_cost, 2)}$'
+            cost_str_width = len(cost_str)*self.paragraph_symbol_width + (len(cost_str) - 1)*2
             coords: Coords = Coords(
-                self.receipt_width-50,
+                self.receipt_width - 30 - cost_str_width,
                 self.receipt_next_line_oy
             )
-            self.add_receipt_sections(coords, f'{round(product_cost, 2)}$')
+
+            self.add_receipt_sections(coords, cost_str)
 
             self.receipt_next_line_oy += 25
 
@@ -278,14 +298,19 @@ class ReceiptBuilder:
         )
         logging.log(logging.INFO, f"Text 'AMOUNT' coords: x - {coords.x}, y - {coords.y}")
         self.add_receipt_sections(coords, "AMOUNT")
+        logging.log(logging.INFO, f"Amount sum coords: x - {coords.x}, y - {coords.y}")
+
+        amount_data, amount_height = self.data["body"]["amount"]
+        amount_str = f'{round(amount_data, 2)}$'
+        amount_str_width = len(amount_str)*self.paragraph_symbol_width + (len(amount_str) - 1)*2
 
         coords: Coords = Coords(
-            self.receipt_width-50,
+            self.receipt_width - 30 - amount_str_width,
             self.receipt_next_line_oy
         )
-        logging.log(logging.INFO, f"Amount sum coords: x - {coords.x}, y - {coords.y}")
-        self.add_receipt_sections(coords, f'{round(self.data["body"]["amount"].data, 2)}$')
-        self.receipt_next_line_oy += 30
+
+        self.add_receipt_sections(coords, amount_str)
+        self.receipt_next_line_oy += amount_height
 
         # Add user card number
         coords: Coords = Coords(
@@ -293,11 +318,13 @@ class ReceiptBuilder:
             self.receipt_next_line_oy
         )
         logging.log(logging.INFO, f"Payment card coords: x - {coords.x}, y - {coords.y}")
-        self.add_receipt_sections(coords, f'Payment card: {self.data["footer"]["card_number"].data}')
-        self.receipt_next_line_oy += 30
+        card_number_data, card_number_height = self.data["footer"]["card_number"]
+        self.add_receipt_sections(coords, f'Payment card: {card_number_data}')
+        self.receipt_next_line_oy += card_number_height
 
         # Add wish phrase
-        phrase_count_symbols = len(self.data["footer"]["wish_phrase"].data)
+        wish_phrase_data, wish_phrase_height = self.data["footer"]["wish_phrase"]
+        phrase_count_symbols = len(wish_phrase_data)
         phrase_spaces_count = phrase_count_symbols - 1
         phrase_width = phrase_count_symbols * 5 + phrase_spaces_count * 2
 
@@ -306,8 +333,8 @@ class ReceiptBuilder:
             self.receipt_next_line_oy
         )
         logging.log(logging.INFO, f"Wish phrase coords: x - {coords.x}, y - {coords.y}")
-        self.add_receipt_sections(coords, self.data["footer"]["wish_phrase"].data)
-        self.receipt_next_line_oy += 30  # TODO: get sizes from data dict
+        self.add_receipt_sections(coords, wish_phrase_data)
+        self.receipt_next_line_oy += wish_phrase_height
 
         if self.bar_code is not None:
             barcode_coords: Coords = Coords(
