@@ -1,3 +1,4 @@
+import logging
 import os
 from random import randint
 from decimal import Decimal
@@ -13,7 +14,7 @@ from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptCornerCoords
 class Profile(models.Model):  # TODO: add fields
     user = models.OneToOneField(to=User, on_delete=models.CASCADE, related_name="profile")
     telegram_chat_id = models.CharField(max_length=20, null=True, blank=True, default="")  # TODO: telegram user id ???
-
+    # TODO: add back relation for card & show in admin site
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -26,7 +27,7 @@ class Card(models.Model):
     _cvv = models.CharField(max_length=3, null=True, blank=True)
     _balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     _card_uid = models.CharField(max_length=8, unique=True, null=True, blank=True)
-    # TODO: add PIN
+    _pin_code = models.CharField(max_length=4, null=True, blank=True)
     owner = models.ForeignKey(to=Profile, on_delete=models.CASCADE)
 
     created = models.DateTimeField(auto_now_add=True)
@@ -43,6 +44,8 @@ class Card(models.Model):
     def cvv(self, value: str):
         if value.isdigit():
             self._cvv = value
+        else:
+            logging.log(logging.INFO, "Error. Can`t set cvv for card")
 
     @property
     def card_number(self):
@@ -52,6 +55,8 @@ class Card(models.Model):
     def card_number(self, value: str):
         if value.isdigit() and len(value) == 16:
             self._card_number = value
+        else:
+            logging.log(logging.INFO, "Error. Can`t set card_number for card")
 
     @property
     def balance(self):
@@ -70,7 +75,18 @@ class Card(models.Model):
         if check_hex_digit(value):
             self._card_uid = value.lower()
         else:
-            print("Error. ")
+            logging.log(logging.INFO, "Error. Can`t set card_uid for card")
+
+    @property
+    def pin_code(self):
+        return self._pin_code
+
+    @pin_code.setter
+    def pin_code(self, value: str):
+        if len(value) == 4 and value.isdigit():
+            self._pin_code = value
+        else:
+            logging.log(logging.INFO, "Error. Can`t set pin_code for card")
 
     def generate_cvv(self):
         self.cvv = str(randint(100, 999))

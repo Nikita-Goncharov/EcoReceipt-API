@@ -1,4 +1,6 @@
+import os
 import logging
+
 from aiohttp import ClientSession
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import CommandStart
@@ -10,6 +12,7 @@ from fsmcontext_types import RegisterUserData, LoginData, RegisterCardData, Regi
 from redis_db import save_user_auth_status, get_user_auth_status
 
 router = Router()
+SERVER_API_DOMAIN = os.getenv("SERVER_API_DOMAIN")
 
 
 @router.message(CommandStart())
@@ -54,7 +57,7 @@ async def get_login_password(message: Message, state: FSMContext):
     if not user_auth_data["is_logged_in"]:
         async with ClientSession() as session:
             async with session.post(
-                    "http://192.168.0.106:8000/client_api/login/",
+                    f"{SERVER_API_DOMAIN}login/",
                     json={"email": data["email"], "password": data["password"]}
             ) as response:
                 if response.status == 200:
@@ -80,7 +83,7 @@ async def logout_handler(message: Message):
     if user_auth_data["is_logged_in"]:
         async with ClientSession() as session:
             async with session.post(
-                    "http://192.168.0.106:8000/client_api/logout/",
+                    f"{SERVER_API_DOMAIN}logout/",
                     headers={"Authorization": f'Token {user_auth_data["token"]}'},
             ) as response:
                 if response.status == 200:
@@ -157,7 +160,7 @@ async def get_password(message: Message, state: FSMContext):
     }
     async with ClientSession() as session:
         async with session.post(
-                "http://192.168.0.106:8000/client_api/register_user/",
+                f"{SERVER_API_DOMAIN}register_user/",
                 json=json_data
         ) as response:
             if response.status == 200:
@@ -192,7 +195,7 @@ async def register_card(message: Message, state: FSMContext):
     }
     async with ClientSession() as session:
         async with session.post(
-                "http://192.168.0.106:8000/client_api/register_card/",
+                f"{SERVER_API_DOMAIN}register_card/",
                 headers={"Authorization": f'Token {user_auth_data["token"]}'},
                 json=json_data
         ) as response:
@@ -280,7 +283,7 @@ async def get_company_building(message: Message, state: FSMContext):
     }
     async with ClientSession() as session:
         async with session.post(
-                "http://192.168.0.106:8000/client_api/register_company/",
+                f"{SERVER_API_DOMAIN}register_company/",
                 json=json_data
         ) as response:
             if response.status == 200:

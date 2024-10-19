@@ -1,6 +1,8 @@
 from decimal import Decimal
 
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -177,6 +179,15 @@ class GetCardBalance(APIView):  # inner view
             return Response(data={"success": False, "message": "Error. Card does not registered."}, status=404)
 
 
+# class GetCompanyBalance(APIView):  # inner view
+#     def get(self, request: Request, company_token: str) -> Response:
+#         try:
+#             company = Company.objects.get(_company_token=company_token)
+#             return Response(data={"success": True, "balance": company.balance, "message": ""})
+#         except ObjectDoesNotExist:
+#             return Response(data={"success": False, "message": "Error. Company does not registered."}, status=404)
+
+
 class GetUserCardsReceipts(APIView):  # TODO: sort and pagination
     permission_classes = [IsAuthenticated]
 
@@ -188,9 +199,18 @@ class GetUserCardsReceipts(APIView):  # TODO: sort and pagination
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
 
+# class GetUserCards(ListAPIView):
+#     permission_classes = [IsAuthenticated]
+#     queryset = Card.objects.all()
+#     serializer_class = CardSerializer
+#     pagination_class = LimitOffsetPagination
+#
+#     def get_queryset(self, *args, **kwargs):
+#         return super().get_queryset(*args, **kwargs).filter(
+#             owner=self.request.user.profile
+#         )
+
+
 class GetReceipt(APIView):
     pass
 
-
-class GetCompanyBalance(APIView):
-    pass
