@@ -1,7 +1,7 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 user_logged_in_buttons = [
-    [KeyboardButton(text="Register card"), KeyboardButton(text="Show all receipts")],
+    [KeyboardButton(text="Register card"), KeyboardButton(text="Show last 10 receipts")],
     [KeyboardButton(text="Logout")]
 ]
 

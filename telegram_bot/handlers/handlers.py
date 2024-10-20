@@ -4,12 +4,13 @@ import logging
 from aiohttp import ClientSession
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram.types import Message, URLInputFile
 from aiogram import F, Router
 
 from keyboards import keyboard_for_anon, keyboard_for_logged_in
 from fsmcontext_types import RegisterUserData, LoginData, RegisterCardData, RegisterCompanyData
 from redis_db import save_user_auth_status, get_user_auth_status
+from bot import bot
 
 router = Router()
 SERVER_API_DOMAIN = os.getenv("SERVER_API_DOMAIN")
@@ -190,13 +191,17 @@ async def register_card(message: Message, state: FSMContext):
     data = await state.get_data()
     user_auth_data = await get_user_auth_status(message.from_user.id)
 
+    headers = {
+        "Authorization": f'Token {user_auth_data["token"]}'
+    }
+
     json_data = {
         "card_uid": data.get("card_uid", "")
     }
     async with ClientSession() as session:
         async with session.post(
                 f"{SERVER_API_DOMAIN}register_card/",
-                headers={"Authorization": f'Token {user_auth_data["token"]}'},
+                headers=headers,
                 json=json_data
         ) as response:
             if response.status == 200:
@@ -294,6 +299,24 @@ async def get_company_building(message: Message, state: FSMContext):
 
     await message.answer(reply, parse_mode="Markdown")
     await state.clear()
+
+
+@router.message(F.text.lower() == "show last 10 receipts")
+async def show_receipts_handler(message: Message, state: FSMContext):
+    user_auth_data = await get_user_auth_status(message.from_user.id)
+    headers = {
+        "Authorization": f'Token {user_auth_data["token"]}'
+    }
+
+    async with ClientSession() as session:
+        async with session.get(f"{SERVER_API_DOMAIN}get_user_transactions?count=10&offset=0", headers=headers) as response:
+            response_data = await response.json()
+            for transaction in response_data["results"]:
+                receipt_path = transaction["receipt"]["img"]
+                photo = URLInputFile(receipt_path)
+
+                card_balance = transaction["card_balance_after"]
+                await bot.send_photo(chat_id=message.chat.id, photo=photo, caption=f"Card balance after this operation: {card_balance}")
 
 
 @router.message()
