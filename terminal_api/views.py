@@ -81,8 +81,11 @@ class WriteOffMoney(APIView):
             tokens = Token.objects.filter(user=card.owner.user)
             if tokens.count() != 0:
                 current_site_domain = ServiceSetting.objects.get(name="CURRENT_SITE_DOMAIN").get_value()
-                process = Process(target=run_async_in_process, args=(f"{current_site_domain}/media/{receipt_path}", card.owner.telegram_chat_id))
-                process.start()  # TODO: should we stop process ??
+                process = Process(
+                    target=run_async_in_process,
+                    args=(f"{current_site_domain}/media/{receipt_path}", card.owner.telegram_chat_id, f"Card balance: {card.balance}")
+                )
+                process.start()
 
             return Response(data={
                 "success": True,
