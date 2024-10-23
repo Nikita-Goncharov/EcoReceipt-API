@@ -371,32 +371,29 @@ class GetCardBalanceTestCase(TestCase):
         self.assertEqual(self.card.balance, card_balance)
 
 
-class GetUserCardsReceiptsTestCase(TestCase):
-    def setUp(self):
-        self.client = Client()
-        self.url = "/client_api/get_receipts_by_cards/"
-
-        self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
-        self.card = Card.objects.create(owner=self.user.profile)
-        self.card.card_uid = "d3a333b3"
-        self.card.balance = 10
-        self.card.generate_card_number()
-        self.card.generate_cvv()
-        self.card.save()
-
-    def test_not_authorized_request(self):
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 401)
-
-    def test_correct_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
-
-        response = self.client.get(self.url, headers=headers)
-        self.assertEqual(response.status_code, 200)
-        response_data = response.json().get("data")
-        self.assertEqual(len(response_data), 1)  # user has only one card, so we expect only one record in list
-
-
-
+# class GetUserCardsReceiptsTestCase(TestCase):
+#     def setUp(self):
+#         self.client = Client()
+#         self.url = "/client_api/get_receipts_by_cards/"
+#
+#         self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
+#         self.card = Card.objects.create(owner=self.user.profile)
+#         self.card.card_uid = "d3a333b3"
+#         self.card.balance = 10
+#         self.card.generate_card_number()
+#         self.card.generate_cvv()
+#         self.card.save()
+#
+#     def test_not_authorized_request(self):
+#         response = self.client.get(self.url)
+#         self.assertEqual(response.status_code, 401)
+#
+#     def test_correct_request(self):
+#         headers = {
+#             "Authorization": f"Token {self.user_token}"
+#         }
+#
+#         response = self.client.get(self.url, headers=headers)
+#         self.assertEqual(response.status_code, 200)
+#         response_data = response.json().get("data")
+#         self.assertEqual(len(response_data), 1)  # user has only one card, so we expect only one record in list

@@ -14,7 +14,6 @@ from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptCornerCoords
 class Profile(models.Model):  # TODO: add fields
     user = models.OneToOneField(to=User, on_delete=models.CASCADE, related_name="profile")
     telegram_chat_id = models.CharField(max_length=20, null=True, blank=True, default="")  # TODO: telegram user id ???
-    # TODO: add back relation for card & show in admin site
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -28,7 +27,7 @@ class Card(models.Model):
     _balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     _card_uid = models.CharField(max_length=8, unique=True, null=True, blank=True)
     _pin_code = models.CharField(max_length=4, null=True, blank=True)
-    owner = models.ForeignKey(to=Profile, on_delete=models.CASCADE)
+    owner = models.ForeignKey(to=Profile, on_delete=models.CASCADE, related_name="cards")
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)

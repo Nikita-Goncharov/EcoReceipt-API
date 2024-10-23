@@ -316,7 +316,12 @@ async def show_receipts_handler(message: Message, state: FSMContext):
                 photo = URLInputFile(receipt_path)
 
                 card_balance = transaction["card_balance_after"]
-                await bot.send_photo(chat_id=message.chat.id, photo=photo, caption=f"Card balance after this operation: {card_balance}")
+                card_number = "**** **** **** " + transaction["card"]["_card_number"][-4:]
+                await bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo=photo,
+                    caption=f"Card: {card_number}\nCard balance after this operation: {card_balance}"
+                )
 
 
 @router.message()

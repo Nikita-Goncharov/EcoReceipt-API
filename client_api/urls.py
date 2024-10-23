@@ -12,7 +12,7 @@ urlpatterns = [
     path("increase_card_balance/", views.IncreaseCardBalance.as_view()),
     path("increase_company_balance/", views.IncreaseCompanyBalance.as_view()),
 
-    path("get_receipts_by_cards/", views.GetUserCardsReceipts.as_view()),
+    # path("get_receipts_by_cards/", views.GetUserCardsReceipts.as_view()),
     path("get_user_transactions/", views.GetUserTransactions.as_view()),
 
     # path("get_cards/", views.GetUserCards.as_view())

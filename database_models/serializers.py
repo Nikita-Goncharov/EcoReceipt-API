@@ -73,7 +73,25 @@ class CompanySerializer(serializers.ModelSerializer):
         }
 
 
+class CardSerializer(serializers.ModelSerializer):
+    # transactions = TransactionSerializer(many=True)
+    owner = ProfileSerializer()
+
+    class Meta:
+        model = Card
+        fields = ["_card_number", "_cvv", "_balance", "_card_uid", "owner", "created", "updated"]
+        extra_kwargs = {
+            "_card_number": {"read_only": True},
+            "_cvv": {"read_only": True},
+            "_balance": {"read_only": True},
+            # "transactions": {"read_only": True},
+            "created": {"read_only": True},
+            "updated": {"read_only": True}
+        }
+
+
 class TransactionSerializer(serializers.ModelSerializer):
+    card = CardSerializer()
     receipt = ReceiptSerializer()
     company = CompanySerializer()
 
@@ -81,23 +99,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = ["card", "company", "receipt", "card_balance_before", "card_balance_after", "company_balance_before", "company_balance_after", "created", "updated"]
         extra_kwargs = {
-            "created": {"read_only": True},
-            "updated": {"read_only": True}
-        }
-
-
-class CardSerializer(serializers.ModelSerializer):
-    transactions = TransactionSerializer(many=True)
-    owner = ProfileSerializer()
-
-    class Meta:
-        model = Card
-        fields = ["_card_number", "_cvv", "_balance", "_card_uid", "owner", "transactions", "created", "updated"]
-        extra_kwargs = {
-            "_card_number": {"read_only": True},
-            "_cvv": {"read_only": True},
-            "_balance": {"read_only": True},
-            "transactions": {"read_only": True},
             "created": {"read_only": True},
             "updated": {"read_only": True}
         }

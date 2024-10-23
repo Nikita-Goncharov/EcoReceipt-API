@@ -81,15 +81,15 @@ class GetCardBalance(APIView):  # inner view
 #             return Response(data={"success": False, "message": "Error. Company does not registered."}, status=404)
 
 
-class GetUserCardsReceipts(APIView):  # TODO: sort and pagination
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request: Request, count: int = 10, page: int = 1) -> Response:
-        try:
-            serializer = CardSerializer(Card.objects.filter(owner=request.user.profile), many=True)
-            return Response(data={"success": True, "data": serializer.data, "message": ""})
-        except Exception as ex:
-            return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+# class GetUserCardsReceipts(APIView):  # TODO: sort and pagination
+#     permission_classes = [IsAuthenticated]
+#
+#     def get(self, request: Request, count: int = 10, page: int = 1) -> Response:
+#         try:
+#             serializer = CardSerializer(Card.objects.filter(owner=request.user.profile), many=True)
+#             return Response(data={"success": True, "data": serializer.data, "message": ""})
+#         except Exception as ex:
+#             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
 
 class GetUserTransactions(ListAPIView):
@@ -103,7 +103,6 @@ class GetUserTransactions(ListAPIView):
         return super().get_queryset(*args, **kwargs).filter(
             card__owner=self.request.user.profile
         )
-
 
 
 # class GetUserCards(ListAPIView):
