@@ -11,12 +11,16 @@ API side it is only part of project, also will be created client web service, mo
 - Add .env file near to django applications and fill it with variables:
 
 ```bash
+DEBUG=true
 SECRET_KEY=secret_key
 DB_HOST=database_host
 DB_PORT=database_port
 DB_NAME=database_name
 DB_USER=database_user
 DB_PASSWORD=database_user_password
+
+SERVER_API_DOMAIN=domain_or_ip
+BOT_TOKEN=telegram_bot_token
 ```
 
 - Create virtual environment
@@ -24,20 +28,25 @@ DB_PASSWORD=database_user_password
 - Apply project migrations
 
 ```bash
-python manage.py migrate
+$ python manage.py migrate
 ```
 
 - Start dev server
 
 ```bash
-python manage.py runserver 0.0.0.0:8000
+$ python manage.py runserver 0.0.0.0:8000
 ```
 
 ## Run tests
 ```bash
-python manage.py test
+$ python manage.py test
 ```
 
-## API setup on production
+## Ruff linter and formatter start checking
+```bash
+$ ruff check
+$ ruff format
+```
 
-<!-- TODO:  -->
+## Service setup on production
+

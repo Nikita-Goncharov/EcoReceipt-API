@@ -1,5 +1,6 @@
 import logging
 import os
+import hashlib
 from random import randint
 from decimal import Decimal
 
@@ -132,16 +133,32 @@ class Company(models.Model):
     def address(self):
         return f"{self.country}, {self.city}, {self.street} {self.building}"
 
-    def generate_token(self):  # TODO: gen by company data
+    def generate_token(self):
+        """ This method produces very distinct outputs for different input strings,
+            and it’s generally secure against accidental collisions in typical usage scenarios
+
+            SHA256 hash -> hex to decimal -> using mod by 12 from big int we are getting unique symbol -> floor divide int
+
+        """
+
         # token should contain only with numbers(0-9) and * and #
         # token length should be 15 symbols
-        valid_token_symbols = "0123456789*#"
-        token = ""
-        for i in range(0, 15):
-            index = randint(0, len(valid_token_symbols)-1)
-            token += valid_token_symbols[index]
+        allowed_chars = "0123456789#*"
+        allowed_len = len(allowed_chars)
 
-        self._company_token = token
+        # Create a hash of the input string using SHA256
+        hash_object = hashlib.sha256(self.name.encode())  # the same input will always produce the same hash
+
+        hex_hash = hash_object.hexdigest()
+        num_hash = int(hex_hash, 16)
+
+        # Create the unique string by mapping the number to the allowed characters
+        unique_string = ''
+        for _ in range(15):
+            unique_string += allowed_chars[num_hash % allowed_len]
+            num_hash //= allowed_len
+
+        self._company_token = unique_string
         self.save()
 
 
