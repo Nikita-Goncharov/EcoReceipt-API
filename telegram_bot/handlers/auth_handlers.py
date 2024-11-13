@@ -3,40 +3,27 @@ import logging
 
 from aiohttp import ClientSession
 from aiogram.fsm.context import FSMContext
-from aiogram.filters import CommandStart
-from aiogram.types import Message, URLInputFile
+from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram import F, Router
 
 from keyboards import keyboard_for_anon, keyboard_for_logged_in
 from fsmcontext_types import RegisterUserData, LoginData, RegisterCardData, RegisterCompanyData
 from redis_db import save_user_auth_status, get_user_auth_status
-from bot import bot
 
-router = Router()
+auth_router = Router()
 SERVER_API_DOMAIN = os.getenv("SERVER_API_DOMAIN")
 
 
-@router.message(CommandStart())
-async def command_start_handler(message: Message):
-    user_auth_data = await get_user_auth_status(message.from_user.id)
-    if user_auth_data["is_logged_in"]:
-        keyboard = keyboard_for_logged_in
-    else:
-        keyboard = keyboard_for_anon
-
-    await message.answer(f"Welcome to EcoReceipt bot!\nSelect action:", reply_markup=keyboard)
-
-
-@router.message(F.text.lower() == "login")
+@auth_router.message(F.text.lower() == "login")
 async def login_handler(message: Message, state: FSMContext):
     instructions = ("Please send your login email english.\n"
                     "For example: `test@gmail.com`")
 
-    await message.answer(instructions, parse_mode="Markdown")
+    await message.answer(instructions, parse_mode="Markdown", reply_markup=ReplyKeyboardRemove())
     await state.set_state(LoginData.email)
 
 
-@router.message(LoginData.email)
+@auth_router.message(LoginData.email)
 async def get_login_email(message: Message, state: FSMContext):
     await state.update_data(email=message.text)
 
@@ -48,7 +35,7 @@ async def get_login_email(message: Message, state: FSMContext):
     await state.set_state(LoginData.password)
 
 
-@router.message(LoginData.password)
+@auth_router.message(LoginData.password)
 async def get_login_password(message: Message, state: FSMContext):
     await state.update_data(password=message.text)
     await message.delete()
@@ -78,7 +65,7 @@ async def get_login_password(message: Message, state: FSMContext):
     await state.clear()
 
 
-@router.message(F.text.lower() == "logout")
+@auth_router.message(F.text.lower() == "logout")
 async def logout_handler(message: Message):
     user_auth_data = await get_user_auth_status(message.from_user.id)
     if user_auth_data["is_logged_in"]:
@@ -101,16 +88,16 @@ async def logout_handler(message: Message):
     await message.answer(reply, reply_markup=keyboard)
 
 
-@router.message(F.text.lower() == "register profile")
+@auth_router.message(F.text.lower() == "register profile")
 async def register_user(message: Message, state: FSMContext):
     instructions = ("Please send your first name in english.\n"
                     "For example: `Bob`")
 
-    await message.answer(instructions, parse_mode="Markdown")
+    await message.answer(instructions, parse_mode="Markdown", reply_markup=ReplyKeyboardRemove())
     await state.set_state(RegisterUserData.first_name)
 
 
-@router.message(RegisterUserData.first_name)
+@auth_router.message(RegisterUserData.first_name)
 async def get_first_name(message: Message, state: FSMContext):
     await state.update_data(first_name=message.text)
     await state.update_data(telegram_chat_id=message.chat.id)
@@ -121,7 +108,7 @@ async def get_first_name(message: Message, state: FSMContext):
     await state.set_state(RegisterUserData.last_name)
 
 
-@router.message(RegisterUserData.last_name)
+@auth_router.message(RegisterUserData.last_name)
 async def get_last_name(message: Message, state: FSMContext):
     await state.update_data(last_name=message.text)
 
@@ -132,7 +119,7 @@ async def get_last_name(message: Message, state: FSMContext):
     await state.set_state(RegisterUserData.email)
 
 
-@router.message(RegisterUserData.email)
+@auth_router.message(RegisterUserData.email)
 async def get_email(message: Message, state: FSMContext):
     await state.update_data(email=message.text)
 
@@ -144,7 +131,7 @@ async def get_email(message: Message, state: FSMContext):
     await state.set_state(RegisterUserData.password)
 
 
-@router.message(RegisterUserData.password)
+@auth_router.message(RegisterUserData.password)
 async def get_password(message: Message, state: FSMContext):
     await state.update_data(password=message.text)
     await message.delete()
@@ -170,21 +157,28 @@ async def get_password(message: Message, state: FSMContext):
                 logging.info(f"Error. {await response.json()}")
                 reply = "Error. Your user was not created. Try again."
 
-    await message.answer(reply, parse_mode="Markdown")
+    user_auth_data = await get_user_auth_status(message.from_user.id)
+
+    if not user_auth_data["is_logged_in"]:  # TODO: really necessary??
+        keyboard = keyboard_for_anon
+    else:
+        keyboard = keyboard_for_logged_in
+
+    await message.answer(reply, parse_mode="Markdown", reply_markup=keyboard)
     await state.clear()
 
 
-@router.message(F.text.lower() == "register card")
+@auth_router.message(F.text.lower() == "register card")
 async def register_card(message: Message, state: FSMContext):
     instructions = ("Now send unique card id.\n"
                     "For example: `b3a5c7ac`\n"
                     "It will be deleted after sending.")
 
-    await message.answer(instructions, parse_mode="Markdown")
+    await message.answer(instructions, parse_mode="Markdown", reply_markup=ReplyKeyboardRemove())
     await state.set_state(RegisterCardData.card_uid)
 
 
-@router.message(RegisterCardData.card_uid)
+@auth_router.message(RegisterCardData.card_uid)
 async def register_card(message: Message, state: FSMContext):
     await state.update_data(card_uid=message.text)  # TODO add check for card_uid
     await message.delete()
@@ -210,20 +204,27 @@ async def register_card(message: Message, state: FSMContext):
                 logging.info(f"Error. {await response.json()}")
                 reply = "Error. Your card was not created. Try again."
 
-    await message.answer(reply, parse_mode="Markdown")
+    user_auth_data = await get_user_auth_status(message.from_user.id)
+
+    if not user_auth_data["is_logged_in"]:  # TODO: really necessary??
+        keyboard = keyboard_for_anon
+    else:
+        keyboard = keyboard_for_logged_in
+
+    await message.answer(reply, parse_mode="Markdown", reply_markup=keyboard)
     await state.clear()
 
 
-@router.message(F.text.lower() == "register company")
+@auth_router.message(F.text.lower() == "register company")
 async def register_company(message: Message, state: FSMContext):
     instructions = ("Please send name of your company in english.\n"
                     "For example: `Computer store`")
 
-    await message.answer(instructions, parse_mode="Markdown")
+    await message.answer(instructions, parse_mode="Markdown", reply_markup=ReplyKeyboardRemove())
     await state.set_state(RegisterCompanyData.name)
 
 
-@router.message(RegisterCompanyData.name)
+@auth_router.message(RegisterCompanyData.name)
 async def get_company_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     instructions = ("Now send hotline phone number of your company.\n"
@@ -233,7 +234,7 @@ async def get_company_name(message: Message, state: FSMContext):
     await state.set_state(RegisterCompanyData.hotline_phone)
 
 
-@router.message(RegisterCompanyData.hotline_phone)
+@auth_router.message(RegisterCompanyData.hotline_phone)
 async def get_company_hotline_phone(message: Message, state: FSMContext):
     await state.update_data(hotline_phone=message.text)
     instructions = ("Now send your company country in english.\n"
@@ -243,7 +244,7 @@ async def get_company_hotline_phone(message: Message, state: FSMContext):
     await state.set_state(RegisterCompanyData.country)
 
 
-@router.message(RegisterCompanyData.country)
+@auth_router.message(RegisterCompanyData.country)
 async def get_company_country(message: Message, state: FSMContext):
     await state.update_data(country=message.text)
     instructions = ("Now send your company city in english.\n"
@@ -253,7 +254,7 @@ async def get_company_country(message: Message, state: FSMContext):
     await state.set_state(RegisterCompanyData.city)
 
 
-@router.message(RegisterCompanyData.city)
+@auth_router.message(RegisterCompanyData.city)
 async def get_company_city(message: Message, state: FSMContext):
     await state.update_data(city=message.text)
     instructions = ("Now send your company street in english.\n"
@@ -263,7 +264,7 @@ async def get_company_city(message: Message, state: FSMContext):
     await state.set_state(RegisterCompanyData.street)
 
 
-@router.message(RegisterCompanyData.street)
+@auth_router.message(RegisterCompanyData.street)
 async def get_company_street(message: Message, state: FSMContext):
     await state.update_data(street=message.text)
     instructions = ("Now send your company number of building in english.\n"
@@ -273,7 +274,7 @@ async def get_company_street(message: Message, state: FSMContext):
     await state.set_state(RegisterCompanyData.building)
 
 
-@router.message(RegisterCompanyData.building)
+@auth_router.message(RegisterCompanyData.building)
 async def get_company_building(message: Message, state: FSMContext):
     await state.update_data(building=message.text)
     data = await state.get_data()
@@ -297,33 +298,12 @@ async def get_company_building(message: Message, state: FSMContext):
                 logging.info(f"Error. {await response.json()}")
                 reply = "Error. Your company was not created. Try again."
 
-    await message.answer(reply, parse_mode="Markdown")
-    await state.clear()
-
-
-@router.message(F.text.lower() == "show last 10 receipts")
-async def show_receipts_handler(message: Message, state: FSMContext):
     user_auth_data = await get_user_auth_status(message.from_user.id)
-    headers = {
-        "Authorization": f'Token {user_auth_data["token"]}'
-    }
 
-    async with ClientSession() as session:
-        async with session.get(f"{SERVER_API_DOMAIN}get_user_transactions?count=10&offset=0", headers=headers) as response:
-            response_data = await response.json()
-            for transaction in response_data["results"]:
-                receipt_path = transaction["receipt"]["img"]
-                photo = URLInputFile(receipt_path)
+    if not user_auth_data["is_logged_in"]:  # TODO: really necessary??
+        keyboard = keyboard_for_anon
+    else:
+        keyboard = keyboard_for_logged_in
 
-                card_balance = transaction["card_balance_after"]
-                card_number = "**** **** **** " + transaction["card"]["_card_number"][-4:]
-                await bot.send_photo(
-                    chat_id=message.chat.id,
-                    photo=photo,
-                    caption=f"Card: {card_number}\nCard balance after this operation: {card_balance}"
-                )
-
-
-@router.message()
-async def no_matched_handler(message: Message):
-    await message.answer(f"There is no this variant")
+    await message.answer(reply, parse_mode="Markdown", reply_markup=keyboard)
+    await state.clear()

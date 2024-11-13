@@ -9,7 +9,7 @@ from django.db.utils import IntegrityError
 from django.contrib.auth.models import User
 
 from .utils import check_hex_digit, get_random_goods_with_all_amount
-from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptCornerCoords, Coords, ReceiptData, ReceiptDataItem
+from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptData, ReceiptDataItem
 
 
 class Profile(models.Model):  # TODO: add fields
@@ -193,7 +193,7 @@ class Receipt(models.Model):
 
         return self.img
 
-    def _generate_receipt_img(self) -> str:  # TODO: how i can sign receipts(for checking if original)
+    def _generate_receipt_img(self) -> str:
         try:
             year, month, day, hour, minute = self.created.year, self.created.month, self.created.day, self.created.hour, self.created.minute
 

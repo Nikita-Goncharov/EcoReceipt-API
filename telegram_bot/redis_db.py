@@ -1,6 +1,16 @@
-import redis.asyncio as redis
+import os
 
-redis_db = redis.Redis(host="localhost", port=6379, db=0)
+import redis.asyncio as redis
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+REDIS_HOST = os.getenv("REDIS_HOST")
+REDIS_PORT = os.getenv("REDIS_PORT")
+REDIS_PORT = int(REDIS_PORT) if REDIS_PORT is not None else 6379
+
+redis_db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
 
 async def save_user_auth_status(user_id: int, is_logged_in: bool = False, token: str = ""):

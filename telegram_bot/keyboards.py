@@ -9,5 +9,14 @@ user_anon_buttons = [
     [KeyboardButton(text="Register profile"), KeyboardButton(text="Register company")],
     [KeyboardButton(text="Login")]
 ]
-keyboard_for_logged_in = ReplyKeyboardMarkup(keyboard=user_logged_in_buttons, resize_keyboard=True)
-keyboard_for_anon = ReplyKeyboardMarkup(keyboard=user_anon_buttons, resize_keyboard=True)
+
+keyboard_for_logged_in = ReplyKeyboardMarkup(
+    keyboard=user_logged_in_buttons,
+    resize_keyboard=True,
+    input_field_placeholder="Use menu...."
+)
+keyboard_for_anon = ReplyKeyboardMarkup(
+    keyboard=user_anon_buttons,
+    resize_keyboard=True,
+    input_field_placeholder="Use menu...."
+)

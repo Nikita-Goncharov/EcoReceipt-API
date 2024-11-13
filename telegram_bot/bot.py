@@ -17,12 +17,13 @@ dp = Dispatcher(storage=MemoryStorage())
 
 
 async def main():
-    dp.include_router(router)
+    dp.include_routers(auth_router, manage_router)
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    from handlers.handlers import router
+    from handlers.auth_handlers import auth_router
+    from handlers.manage_handlers import manage_router
 
     if DEBUG:
         logging.basicConfig(level=logging.INFO)
