@@ -8,10 +8,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ObjectDoesNotExist
 
-from .auth_views import *
-from database_models.models import Card, Company, Transaction
+from database_models.models import Card, Profile, Company, Transaction, IncreaseBalanceRequest
 from database_models.utils import check_hex_digit
-from database_models.serializers import CardSerializer, TransactionSerializer
+from database_models.serializers import CardSerializer, TransactionSerializer, IncreaseBalanceRequestSerializer
 
 
 class IncreaseCardBalance(APIView):
@@ -104,6 +103,97 @@ class GetUserTransactions(ListAPIView):
             card__owner=self.request.user.profile
         )
 
+
+class CreateIncreaseBalanceRequest(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        try:
+            amount = request.data.get("amount", 0)
+            card_number = request.data.get("card_number")
+            message = request.data.get("message")
+
+            cards = Card.objects.filter(_card_number=card_number)
+            if cards.count() == 0:
+                return Response(data={"success": True, "message": "Error. Card not found"}, status=404)
+            card = cards.first()
+            increase_balance_request = IncreaseBalanceRequest()
+            increase_balance_request.requested_money = Decimal(amount)
+            increase_balance_request.card = card
+            increase_balance_request.attached_message = message
+            increase_balance_request.save()
+            return Response(data={"success": True, "message": ""}, status=200)
+        except Exception as ex:
+            return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+
+
+class GetIncreaseBalanceRequests(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        try:
+            user = request.user
+            profiles = Profile.objects.filter(user=user)
+            if profiles.count() == 0:
+                return Response(data={"success": False, "message": f"Error. There is no profile for this user"}, status=404)
+            profile = profiles.first()
+
+            if profile.role != "admin":
+                return Response(data={"success": False, "message": f"Error. This action available only for admins"}, status=403)
+
+            serializer = IncreaseBalanceRequestSerializer(
+                IncreaseBalanceRequest.objects.filter(request_status="waiting"),
+                many=True
+            )
+            return Response(data={"success": True, "data": serializer.data, "message": ""}, status=200)
+        except Exception as ex:
+            return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+
+
+class ConsiderIncreaseBalanceRequests(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        try:
+            user = request.user
+            profiles = Profile.objects.filter(user=user)
+            if profiles.count() == 0:
+                return Response(data={"success": False, "message": f"Error. There is no profile for this user"},
+                                status=404)
+            profile = profiles.first()
+
+            if profile.role != "admin":
+                return Response(data={"success": False, "message": f"Error. This action available only for admins"},
+                                status=403)
+
+            request_id = request.data.get("request_id")
+            new_status = request.data.get("status")
+
+            if request_id is None or new_status is None:
+                return Response(data={"success": False, "message": f"Error. Invalid request data"},
+                                status=400)
+
+            increase_requests = IncreaseBalanceRequest.objects.filter(pk=request_id)  # TODO: get only waiting reuqests
+
+            if increase_requests.count() == 0:
+                return Response(data={"success": False, "message": f"Error. There is no increase balance request with that id"},
+                                status=404)
+            increase_request = increase_requests.first()
+
+            if new_status != "accepted" and new_status != "denied":
+                return Response(data={"success": False, "message": f"Error. Incorrect status in request body"},
+                                status=400)
+
+            if new_status == "accepted":
+                increase_request.card.balance = increase_request.card.balance + increase_request.requested_money
+                increase_request.card.save()
+
+            increase_request.request_status = new_status
+            increase_request.save()
+
+            return Response(data={"success": True, "message": ""}, status=200)
+        except Exception as ex:
+            return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
 # class GetUserCards(ListAPIView):
 #     permission_classes = [IsAuthenticated]

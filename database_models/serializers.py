@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from .models import Card, Company, Transaction, Profile, Receipt, Product
+from .models import Card, Company, Transaction, Profile, Receipt, Product, IncreaseBalanceRequest
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -24,7 +24,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ["user", "telegram_chat_id", "created", "updated"]
+        fields = ["user", "telegram_chat_id", "role", "created", "updated"]
         extra_kwargs = {
             "telegram_chat_id": {"required": False, "default": ""},
             "created": {"read_only": True},
@@ -98,6 +98,18 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = ["card", "company", "receipt", "card_balance_before", "card_balance_after", "company_balance_before", "company_balance_after", "created", "updated"]
+        extra_kwargs = {
+            "created": {"read_only": True},
+            "updated": {"read_only": True}
+        }
+
+
+class IncreaseBalanceRequestSerializer(serializers.ModelSerializer):
+    card = CardSerializer()
+
+    class Meta:
+        model = IncreaseBalanceRequest
+        fields = ["id", "requested_money", "card", "attached_message", "request_status", "created", "updated"]
         extra_kwargs = {
             "created": {"read_only": True},
             "updated": {"read_only": True}

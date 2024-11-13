@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 
 from database_models.models import Card, Profile, Company
 from database_models.utils import check_hex_digit
-from database_models.serializers import UserSerializer, CompanySerializer
+from database_models.serializers import UserSerializer, CompanySerializer, ProfileSerializer
 
 
 __all__ = ["RegisterCompany", "RegisterCard", "RegisterUser", "LoginUser", "LogoutUser"]
@@ -115,5 +115,22 @@ class RegisterCompany(APIView):
                 return Response(data={"success": True, "message": ""})
             else:
                 return Response(data={"success": False, "message": f"Error. Request data is not valid."}, status=400)
+        except Exception as ex:
+            return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+
+
+class GetUserInfo(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        try:
+            user = request.user
+            profiles = Profile.objects.filter(user=user)
+            if profiles.count() == 0:
+                return Response(data={"success": False, "message": f"Error. There is no profile for this user"}, status=404)
+            profile = profiles.first()
+
+            serializer = ProfileSerializer(profile)
+            return Response(data={"success": True, "data": serializer.data, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)

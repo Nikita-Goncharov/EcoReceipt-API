@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Card, Receipt, Profile, Company, Transaction, Product, ServiceSetting
+from .models import Card, Receipt, Profile, Company, Transaction, Product, ServiceSetting, IncreaseBalanceRequest
 
 
 @admin.register(Card)
@@ -40,3 +40,8 @@ class TransactionAdmin(admin.ModelAdmin):
 @admin.register(ServiceSetting)
 class ServiceSettingAdmin(admin.ModelAdmin):
     list_display = ("name", "value_type", "value", "description", "created", "updated")
+
+
+@admin.register(IncreaseBalanceRequest)
+class IncreaseBalanceRequestAdmin(admin.ModelAdmin):
+    list_display = ("requested_money", "card___card_number", "attached_message", "request_status", "created", "updated")

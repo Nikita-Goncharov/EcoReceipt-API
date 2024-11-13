@@ -12,9 +12,14 @@ from .utils import check_hex_digit, get_random_goods_with_all_amount
 from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptData, ReceiptDataItem
 
 
-class Profile(models.Model):  # TODO: add fields
+class Profile(models.Model):
+    ROLES = {
+        "admin": "admin",
+        "user": "user"
+    }
     user = models.OneToOneField(to=User, on_delete=models.CASCADE, related_name="profile")
     telegram_chat_id = models.CharField(max_length=20, null=True, blank=True, default="")  # TODO: telegram user id ???
+    role = models.CharField(choices=ROLES, default=ROLES["user"])
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -280,3 +285,23 @@ class ServiceSetting(models.Model):
 
     def __str__(self):
         return f"Setting: {self.name}"
+
+
+class IncreaseBalanceRequest(models.Model):
+    STATUSES = {
+        "waiting": "waiting",
+        "accepted": "accepted",
+        "considered": "considered",
+        "denied": "denied"
+    }
+
+    requested_money = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    card = models.ForeignKey(Card, on_delete=models.CASCADE)
+    attached_message = models.TextField(null=True, blank=True)
+    request_status = models.CharField(choices=STATUSES, default=STATUSES["waiting"])
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Increase Balance Request: requested money - {self.requested_money}, card - {self.card.card_number}"
