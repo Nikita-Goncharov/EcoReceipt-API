@@ -1,3 +1,6 @@
+import json
+import logging
+import random
 from decimal import Decimal
 
 from rest_framework.request import Request
@@ -6,7 +9,7 @@ from django.test import TestCase, Client, RequestFactory
 from django.contrib.auth.models import User
 
 from .views import GetCardBalance
-from database_models.models import Profile, Card, Company
+from database_models.models import Transaction, Receipt, Profile, Card, Company, IncreaseBalanceRequest
 
 
 def do_user_login(email: str, password: str, username: str = "testname") -> tuple[User, str]:
@@ -155,7 +158,7 @@ class RegisterCardTestCase(TestCase):
         }
 
         body = {
-            "card_uid": "gggggggggggg"
+            "card_uid": "101010101010"
         }
 
         response = self.client.post(self.url, body, headers=headers)
@@ -220,6 +223,29 @@ class RegisterCompanyTestCase(TestCase):
         self.assertEqual(company.building, body["building"])
 
         self.assertNotEqual(company.company_token, "")
+
+
+class GetUserInfoTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = "/client_api/get_user_info/"
+        self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
+
+    def test_incorrect_token(self):
+        headers = {
+            "Authorization": "Token 898w9735bo359"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        self.assertEqual(response.status_code, 401)
+
+    def test_correct_request(self):
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        self.assertEqual(response.status_code, 200)
 
 
 class IncreaseCardBalanceTestCase(TestCase):
@@ -369,6 +395,255 @@ class GetCardBalanceTestCase(TestCase):
 
         card_balance = response.data.get("balance")
         self.assertEqual(self.card.balance, card_balance)
+
+
+class GetUserTransactionsTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = "/client_api/get_user_transactions/"
+
+        self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
+        self.card = Card.objects.create(owner=self.user.profile)
+        self.card.card_uid = "e3a333b3"
+        self.card.balance = 1000
+        self.card.generate_card_number()
+        self.card.generate_cvv()
+        self.card.save()
+
+        company = Company(name="Store")
+        company.save()
+        for i in range(5):
+            transaction = Transaction()
+            transaction.card = self.card
+            transaction.company = company
+            transaction.receipt = Receipt()
+            transaction.receipt.save()
+
+            transaction.amount = random.randint(1, 10)
+
+            transaction.card_balance_before = random.randint(1, 100)
+            transaction.card_balance_after = transaction.card_balance_before - transaction.amount
+            transaction.company_balance_before = random.randint(1, 100)
+            transaction.company_balance_after = transaction.company_balance_before + transaction.amount
+            transaction.save()
+
+    def test_incorrect_token(self):
+        headers = {
+            "Authorization": "Token 898w9735bo359"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        self.assertEqual(response.status_code, 401)
+
+    def test_correct_request(self):
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        response_body = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response_body["results"]), 5)
+
+
+class CreateIncreaseBalanceRequestTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = "/client_api/create_increase_balance_request/"
+
+        self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
+        self.card = Card.objects.create(owner=self.user.profile)
+        self.card.card_uid = "e3a333b3"
+        self.card.balance = 1000
+        self.card.generate_card_number()
+        self.card.generate_cvv()
+        self.card.save()
+
+    def test_incorrect_token(self):
+        headers = {
+            "Authorization": "Token 898w9735bo359"
+        }
+
+        response = self.client.post(self.url, headers=headers)
+        self.assertEqual(response.status_code, 401)
+
+    def test_incorrect_card_number(self):
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        body = {
+            "amount": 100,
+            "card_number": "0",
+            "message": ""
+        }
+
+        response = self.client.post(self.url, headers=headers, data=body)
+        self.assertEqual(response.status_code, 404)
+
+    def test_correct_request(self):
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        body = {
+            "amount": 100,
+            "card_number": self.card.card_number,
+            "message": "Hello"
+        }
+
+        response = self.client.post(self.url, headers=headers, data=body)
+        self.assertEqual(response.status_code, 200)
+
+        balance_requests = IncreaseBalanceRequest.objects.all()
+        self.assertEqual(balance_requests.count(), 1)
+        balance_request = balance_requests.first()
+        self.assertEqual(balance_request.request_status, "waiting")
+
+
+class GetIncreaseBalanceRequestsTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = "/client_api/get_increase_balance_requests/"
+
+        self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
+
+    def test_incorrect_token(self):
+        headers = {
+            "Authorization": "Token 898w9735bo359"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        self.assertEqual(response.status_code, 401)
+
+    def test_forbidden_request(self):
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        self.assertEqual(response.status_code, 403)
+
+    def test_correct_request(self):
+        self.user.profile.role = "admin"
+        self.user.profile.save()
+
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        self.assertEqual(response.status_code, 200)
+
+
+class ConsiderIncreaseBalanceRequestsTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = "/client_api/consider_increase_balance_request/"
+
+        self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
+
+        self.card = Card.objects.create(owner=self.user.profile)
+        self.card.card_uid = "e3a333b3"
+        self.card.balance = 0
+        self.card.generate_card_number()
+        self.card.generate_cvv()
+        self.card.save()
+
+        self.balance_request = IncreaseBalanceRequest()
+        self.balance_request.requested_money = 100
+        self.balance_request.card = self.card
+        self.balance_request.attached_message = "Hello"
+        self.balance_request.save()
+
+    def test_incorrect_token(self):
+        headers = {
+            "Authorization": "Token 898w9735bo359"
+        }
+
+        response = self.client.post(self.url, headers=headers)
+        self.assertEqual(response.status_code, 401)
+
+    def test_forbidden_request(self):
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        body = {
+            "request_id": self.balance_request.id,
+            "status": "accepted"
+        }
+
+        response = self.client.post(self.url, headers=headers, data=body)
+        self.assertEqual(response.status_code, 403)
+
+    def test_invalid_data(self):
+        self.user.profile.role = "admin"
+        self.user.profile.save()
+
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        body = {}
+
+        response = self.client.post(self.url, headers=headers, data=body)
+        self.assertEqual(response.status_code, 400)
+
+    def test_correct_request(self):
+        self.user.profile.role = "admin"
+        self.user.profile.save()
+
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        body = {
+            "request_id": self.balance_request.id,
+            "status": "accepted"
+        }
+
+        response = self.client.post(self.url, headers=headers, data=body)
+        self.assertEqual(response.status_code, 200)
+
+        self.balance_request = IncreaseBalanceRequest.objects.first()
+        self.assertEqual(self.balance_request.request_status, "accepted")
+
+        self.card = Card.objects.first()
+        self.assertEqual(self.card.balance, Decimal(100))
+
+
+class GetUserCardsTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = "/client_api/get_cards/"
+
+        self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
+
+        self.card = Card.objects.create(owner=self.user.profile)
+        self.card.card_uid = "e3a333b3"
+        self.card.balance = 0
+        self.card.generate_card_number()
+        self.card.generate_cvv()
+        self.card.save()
+
+    def test_incorrect_token(self):
+        headers = {
+            "Authorization": "Token 898w9735bo359"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        self.assertEqual(response.status_code, 401)
+
+    def test_correct_request(self):
+        headers = {
+            "Authorization": f"Token {self.user_token}"
+        }
+
+        response = self.client.get(self.url, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        response_body = response.json()
+        self.assertEqual(len(response_body["data"]), 1)
 
 
 # class GetUserCardsReceiptsTestCase(TestCase):

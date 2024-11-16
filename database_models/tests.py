@@ -5,7 +5,7 @@ from django.db import models
 from django.test import TestCase
 from django.contrib.auth.models import User
 
-from .models import Profile, Card, Company, Product, Receipt, Transaction, ServiceSetting
+from .models import Profile, Card, Company, Product, Receipt, Transaction, ServiceSetting, IncreaseBalanceRequest
 from .utils import check_hex_digit
 
 
@@ -247,3 +247,41 @@ class ServiceSettingTestCase(TestCase):
     def test_created_updated_fields(self):
         check_created_updated_fields(self.setting)
 
+
+class IncreaseBalanceRequestTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="testname", email="test@gmail.com")
+        self.profile = Profile.objects.create(user=self.user, telegram_chat_id="1111111")
+
+        self.balance_request = IncreaseBalanceRequest()
+        self.balance_request.requested_money = 20
+
+        self.balance_request.card = Card(owner=self.profile)
+        self.balance_request.card.generate_cvv()
+        self.balance_request.card.generate_card_number()
+        self.balance_request.card.card_uid = "b2af5522"
+        self.balance_request.card.save()
+
+        self.balance_request.attached_message = "Hello"
+        self.balance_request.save()
+
+    def test_balance_request_values(self):
+        self.assertEqual(self.balance_request.requested_money, Decimal(20))
+        self.assertEqual(self.balance_request.attached_message, "Hello")
+        self.assertEqual(self.balance_request.request_status, "waiting")
+
+    def test_requested_money(self):
+        max_digits_count = self.balance_request._meta.get_field("requested_money").max_digits
+        decimal_places = self.balance_request._meta.get_field("requested_money").decimal_places
+
+        self.assertEqual(max_digits_count, 10)
+        self.assertEqual(decimal_places, 2)
+
+    def test_status_changing(self):
+        self.balance_request.request_status = "accepted"
+        self.balance_request.save()
+
+        self.assertEqual(self.balance_request.request_status, "accepted")
+
+    def test_created_updated_fields(self):
+        check_created_updated_fields(self.balance_request)

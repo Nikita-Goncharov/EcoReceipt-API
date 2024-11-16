@@ -132,8 +132,7 @@ class GetIncreaseBalanceRequests(APIView):
 
     def get(self, request: Request) -> Response:
         try:
-            user = request.user
-            profiles = Profile.objects.filter(user=user)
+            profiles = Profile.objects.filter(user=request.user)
             if profiles.count() == 0:
                 return Response(data={"success": False, "message": f"Error. There is no profile for this user"}, status=404)
             profile = profiles.first()
@@ -153,7 +152,7 @@ class GetIncreaseBalanceRequests(APIView):
 class ConsiderIncreaseBalanceRequests(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request: Request) -> Response:
+    def post(self, request: Request) -> Response:  # TODO: change to PUT
         try:
             user = request.user
             profiles = Profile.objects.filter(user=user)
@@ -211,6 +210,3 @@ class GetUserCards(ListAPIView):
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
-
-# class GetReceipt(APIView):
-#     pass
