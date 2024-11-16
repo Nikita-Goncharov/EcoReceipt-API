@@ -113,7 +113,7 @@ class CreateIncreaseBalanceRequest(APIView):
             card_number = request.data.get("card_number")
             message = request.data.get("message")
 
-            cards = Card.objects.filter(_card_number=card_number)
+            cards = Card.objects.filter(owner__user=request.user, _card_number=card_number)
             if cards.count() == 0:
                 return Response(data={"success": True, "message": "Error. Card not found"}, status=404)
             card = cards.first()
@@ -173,10 +173,10 @@ class ConsiderIncreaseBalanceRequests(APIView):
                 return Response(data={"success": False, "message": f"Error. Invalid request data"},
                                 status=400)
 
-            increase_requests = IncreaseBalanceRequest.objects.filter(pk=request_id)  # TODO: get only waiting reuqests
+            increase_requests = IncreaseBalanceRequest.objects.filter(pk=request_id, request_status="waiting")
 
             if increase_requests.count() == 0:
-                return Response(data={"success": False, "message": f"Error. There is no increase balance request with that id"},
+                return Response(data={"success": False, "message": f"Error. There is no waiting increase balance request with that id"},
                                 status=404)
             increase_request = increase_requests.first()
 
@@ -195,16 +195,21 @@ class ConsiderIncreaseBalanceRequests(APIView):
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
-# class GetUserCards(ListAPIView):
-#     permission_classes = [IsAuthenticated]
-#     queryset = Card.objects.all()
-#     serializer_class = CardSerializer
-#     pagination_class = LimitOffsetPagination
-#
-#     def get_queryset(self, *args, **kwargs):
-#         return super().get_queryset(*args, **kwargs).filter(
-#             owner=self.request.user.profile
-#         )
+
+class GetUserCards(ListAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        try:
+            user = request.user
+
+            serializer = CardSerializer(
+                Card.objects.filter(owner__user=user),
+                many=True
+            )
+            return Response(data={"success": True, "data": serializer.data, "message": ""}, status=200)
+        except Exception as ex:
+            return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
 
 # class GetReceipt(APIView):

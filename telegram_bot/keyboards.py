@@ -1,20 +1,32 @@
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+
+register_profile = KeyboardButton(text="🪪Register profile")
+register_card = KeyboardButton(text="📝Register card")
+register_company = KeyboardButton(text="🛒Register company")
+
+login = KeyboardButton(text="🙍Login")
+logout = KeyboardButton(text="👤Logout")
+
+show_10_receipts = KeyboardButton(text="🧾Show last 10 receipts")
+show_cards = KeyboardButton(text="💳Show registered cards")
+send_increase_balance_request = KeyboardButton(text="💰Send card balance increasing request")
+view_increase_balance_request = KeyboardButton(text="💰View card balance requests")
 
 user_logged_in_buttons = [
-    [KeyboardButton(text="Register card"), KeyboardButton(text="Show last 10 receipts")],
-    [KeyboardButton(text="Show registered cards"), KeyboardButton(text="Send card balance increasing request")],
-    [KeyboardButton(text="Logout")]
+    [register_card, show_10_receipts],
+    [show_cards, send_increase_balance_request],
+    [logout]
 ]
 
-admin_buttons = [  # TODO: FIX REPEATING
-    [KeyboardButton(text="Register card"), KeyboardButton(text="Show last 10 receipts")],
-    [KeyboardButton(text="Show registered cards"), KeyboardButton(text="Review card balance requests")],
-    [KeyboardButton(text="Logout")]
+admin_buttons = [
+    [register_card, show_10_receipts],
+    [show_cards, view_increase_balance_request],
+    [logout]
 ]
 
 user_anon_buttons = [
-    [KeyboardButton(text="Register profile"), KeyboardButton(text="Register company")],
-    [KeyboardButton(text="Login")]
+    [register_profile, register_company],
+    [login]
 ]
 
 keyboard_for_logged_in = ReplyKeyboardMarkup(
@@ -34,3 +46,10 @@ keyboard_for_anon = ReplyKeyboardMarkup(
     resize_keyboard=True,
     input_field_placeholder="Use menu...."
 )
+
+
+def generate_view_requests_inline_keyboard(request_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="Accept", callback_data=f"accept_request:{request_id}"),
+        InlineKeyboardButton(text="Deny", callback_data=f"deny_request:{request_id}")
+    ]])

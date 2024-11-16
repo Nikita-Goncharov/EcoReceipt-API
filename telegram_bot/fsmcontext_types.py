@@ -25,3 +25,9 @@ class RegisterCompanyData(StatesGroup):
 class LoginData(StatesGroup):
     email = State()
     password = State()
+
+
+class SendIncreaseBalanceRequest(StatesGroup):
+    amount = State()
+    card_number = State()
+    message = State()

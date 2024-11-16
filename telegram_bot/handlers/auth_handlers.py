@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram import F, Router
 
-from keyboards import keyboard_for_anon, keyboard_for_logged_in
+from keyboards import login, logout, register_profile, register_card, register_company, keyboard_for_anon, keyboard_for_logged_in, keyboard_for_admin
 from fsmcontext_types import RegisterUserData, LoginData, RegisterCardData, RegisterCompanyData
 from redis_db import save_user_auth_status, get_user_auth_status
 
@@ -14,7 +14,7 @@ auth_router = Router()
 SERVER_API_DOMAIN = os.getenv("SERVER_API_DOMAIN")
 
 
-@auth_router.message(F.text.lower() == "login")
+@auth_router.message(F.text == login.text)
 async def login_handler(message: Message, state: FSMContext):
     instructions = ("Please send your login email english.\n"
                     "For example: `test@gmail.com`")
@@ -51,8 +51,24 @@ async def get_login_password(message: Message, state: FSMContext):
                 if response.status == 200:
                     reply = "You were successfully logged in"
                     response_data = await response.json()
-                    await save_user_auth_status(message.from_user.id, True, response_data["token"])
-                    keyboard = keyboard_for_logged_in
+
+                    headers = {
+                        "Authorization": f"Token {response_data['token']}"
+                    }
+
+                    async with session.get(f"{SERVER_API_DOMAIN}get_user_info/", headers=headers) as get_info_response:
+                        if get_info_response.status == 200:
+                            get_info_response_data = await get_info_response.json()
+                            user_role = get_info_response_data["data"]["role"]
+                            await save_user_auth_status(message.from_user.id, user_role, True, response_data["token"])
+                            if user_role == "admin":
+                                keyboard = keyboard_for_admin
+                            else:
+                                keyboard = keyboard_for_logged_in
+                        else:
+                            logging.info(f"Error. {await get_info_response.json()}")
+                            reply = "Error. Could not get info about logged in user. Try again."
+                            keyboard = keyboard_for_anon
                 else:
                     logging.info(f"Error. {await response.json()}")
                     reply = "Error. You were not successfully logged in. Try again."
@@ -65,7 +81,9 @@ async def get_login_password(message: Message, state: FSMContext):
     await state.clear()
 
 
-@auth_router.message(F.text.lower() == "logout")
+# TODO: if user logged in again in another way, then from bot you will not can do logout
+# because token will be invalid
+@auth_router.message(F.text == logout.text)
 async def logout_handler(message: Message):
     user_auth_data = await get_user_auth_status(message.from_user.id)
     if user_auth_data["is_logged_in"]:
@@ -88,7 +106,7 @@ async def logout_handler(message: Message):
     await message.answer(reply, reply_markup=keyboard)
 
 
-@auth_router.message(F.text.lower() == "register profile")
+@auth_router.message(F.text == register_profile.text)
 async def register_user(message: Message, state: FSMContext):
     instructions = ("Please send your first name in english.\n"
                     "For example: `Bob`")
@@ -168,7 +186,7 @@ async def get_password(message: Message, state: FSMContext):
     await state.clear()
 
 
-@auth_router.message(F.text.lower() == "register card")
+@auth_router.message(F.text == register_card.text)
 async def register_card(message: Message, state: FSMContext):
     instructions = ("Now send unique card id.\n"
                     "For example: `b3a5c7ac`\n"
@@ -215,7 +233,7 @@ async def register_card(message: Message, state: FSMContext):
     await state.clear()
 
 
-@auth_router.message(F.text.lower() == "register company")
+@auth_router.message(F.text == register_company.text)
 async def register_company(message: Message, state: FSMContext):
     instructions = ("Please send name of your company in english.\n"
                     "For example: `Computer store`")

@@ -74,7 +74,6 @@ class CompanySerializer(serializers.ModelSerializer):
 
 
 class CardSerializer(serializers.ModelSerializer):
-    # transactions = TransactionSerializer(many=True)
     owner = ProfileSerializer()
 
     class Meta:
@@ -84,7 +83,6 @@ class CardSerializer(serializers.ModelSerializer):
             "_card_number": {"read_only": True},
             "_cvv": {"read_only": True},
             "_balance": {"read_only": True},
-            # "transactions": {"read_only": True},
             "created": {"read_only": True},
             "updated": {"read_only": True}
         }
