@@ -30,7 +30,8 @@ INSTALLED_APPS = [
     'client_api',
     'terminal_api',
     'database_models',
-    'docs'
+    'docs',
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
@@ -99,6 +100,17 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 10
+}
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Token': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    'USE_SESSION_AUTH': False,
 }
 
 LOGGING = {
