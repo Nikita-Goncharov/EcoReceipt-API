@@ -135,7 +135,7 @@ LOGGING = {
             "level": "INFO",
             "class": "logging.handlers.RotatingFileHandler",
             "filename": "ecoreceipt.log",
-            "maxBytes": 100_000,
+            "maxBytes": 50_000,
             "backupCount": 10,
             "formatter": "verbose"
         }

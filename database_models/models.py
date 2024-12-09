@@ -193,8 +193,9 @@ class Receipt(models.Model):
     def get_receipt_img(self):
         if not self.img:
             img = self._generate_receipt_img()
-            self.img = img
-            self.save()
+            if img:
+                self.img = img
+                self.save()
 
         return self.img
 
@@ -230,12 +231,12 @@ class Receipt(models.Model):
                     "wish_phrase": ReceiptDataItem("THANK YOU FOR SHOPPING!", 30)
                 }
             }
-
+            logging.log(logging.INFO, f"Data for making receipt: {data}")
             receipt_creator.set_params(data)
             receipt_creator.make_receipt()
             return new_receipt_image_path.replace("media/", "")
         except Exception as ex:
-            print(f"Error. {str(ex)}")
+            logging.log(logging.INFO, f"Error. {str(ex)}")
             return ""
 
 

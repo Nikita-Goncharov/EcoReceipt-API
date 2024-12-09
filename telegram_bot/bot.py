@@ -31,4 +31,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Exit")
+        logging.log(logging.INFO, "Telegram bot stopped")

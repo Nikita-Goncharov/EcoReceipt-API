@@ -1,6 +1,8 @@
+import logging
 from decimal import Decimal
 from multiprocessing import Process
 
+from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction as django_transaction
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
@@ -20,6 +22,10 @@ class WriteOffMoney(APIView):
             card_uid = request.data.get("card_uid")
             write_off_amount = Decimal(request.data.get("amount", 0))  # TODO: check if write_off_amount is numeric
             company_token = request.data.get("company_token")
+            logging.log(
+                logging.INFO,
+                f"Data from request - card_uid: {card_uid}, write_off_amount: {write_off_amount}, company_token: {company_token}"
+            )
 
             if card_uid is None or write_off_amount is None or company_token is None:
                 return Response(data={
@@ -37,6 +43,8 @@ class WriteOffMoney(APIView):
                 }, status=404)
 
             card_current_balance = response.data["balance"]
+            logging.log(logging.INFO, f"Current user card balance: {card_current_balance}")
+
             if Decimal(card_current_balance) < write_off_amount:  # Check if card balance bigger then write off sum
                 return Response(data={
                     "success": False,
@@ -52,6 +60,7 @@ class WriteOffMoney(APIView):
                     "terminal_message": "Token is invalid"
                 }, status=404)
 
+            logging.log(logging.INFO, f"Start of making payment transaction")
             card = Card.objects.get(_card_uid=card_uid)
             company = companies.first()
 
@@ -74,16 +83,22 @@ class WriteOffMoney(APIView):
             transaction.card_balance_after = card.balance
             transaction.company_balance_after = company.balance
             transaction.save()
+            logging.log(logging.INFO, f"End of making payment transaction")
 
             receipt_path = transaction.receipt.get_receipt_img()
+            logging.log(logging.INFO, f"Generated receipt path: {receipt_path}")
+
 
             # If user logged in, then send receipt to telegram bot
             tokens = Token.objects.filter(user=card.owner.user)
+            logging.log(logging.INFO, f"Check if user logged in system by tokens: {tokens}")
             if tokens.count() != 0:
-                current_site_domain = ServiceSetting.objects.get(name="CURRENT_SITE_DOMAIN").get_value()
+                logging.log(logging.INFO, f"Making subprocess for async sending receipt image in telegram bot")
+                request_site = get_current_site(request)
+                logging.log(logging.INFO, f"Current site: {request_site.domain}")
                 process = Process(
                     target=run_async_in_process,
-                    args=(f"{current_site_domain}/media/{receipt_path}", card.owner.telegram_chat_id, f"Card balance: {card.balance}")
+                    args=(f"http://{request_site.domain}/media/{receipt_path}", card.owner.telegram_chat_id, f"Card balance: {card.balance}")
                 )
                 process.start()
 
@@ -94,7 +109,7 @@ class WriteOffMoney(APIView):
                 "terminal_message": "Payment success"
             }, status=200)
         except Exception as ex:
-            print(ex)
+            logging.log(logging.INFO, f"WriteOffMoney finished with unexpected error: {str(ex)}")
             return Response(data={
                 "success": False,
                 "message": f"Error. {str(ex)}.",

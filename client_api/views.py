@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from rest_framework.views import APIView
@@ -20,6 +21,7 @@ class IncreaseCardBalance(APIView):
         try:
             card_number = request.data.get("card_number")
             amount = request.data.get("amount", 0)
+            logging.log(logging.INFO, f"Data from request - card_number: {card_number}, amount: {amount}")
 
             if card_number is None:
                 return Response(data={"success": False, "message": "Error. There is no card_number."}, status=400)
@@ -32,6 +34,7 @@ class IncreaseCardBalance(APIView):
             if request.user == card.owner.user:
                 card.balance = card.balance + Decimal(amount)
                 card.save()
+                logging.log(logging.INFO, f"User card balance increased: {card.balance}")
                 return Response(data={"success": True, "message": ""})
             else:
                 return Response(data={"success": False, "message": "Error. You are not card owner."}, status=403)
@@ -44,6 +47,7 @@ class IncreaseCompanyBalance(APIView):
         try:
             company_token = request.data.get("company_token")
             amount = request.data.get("amount", 0)
+            logging.log(logging.INFO, f"Data from request - company_token: {company_token}, amount: {amount}")
 
             if company_token is None:
                 return Response(data={"success": False, "message": "Error. There is no company_token."}, status=400)
@@ -54,6 +58,7 @@ class IncreaseCompanyBalance(APIView):
             company = companies.first()
             company.balance = company.balance + Decimal(amount)
             company.save()
+            logging.log(logging.INFO, f"{company.name} company balance increased: {company.balance}")
             return Response(data={"success": True, "message": ""})
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
@@ -62,6 +67,8 @@ class IncreaseCompanyBalance(APIView):
 class GetCardBalance(APIView):  # inner view
     def get(self, request: Request, card_uid: str) -> Response:
         try:
+            logging.log(logging.INFO, f"Data from url - card_uid: {card_uid}")
+
             if check_hex_digit(card_uid):
                 card = Card.objects.get(_card_uid=card_uid.lower())
                 return Response(data={"success": True, "balance": card.balance, "message": ""})
@@ -98,7 +105,7 @@ class GetUserTransactions(ListAPIView):
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self, *args, **kwargs):
-        print(args, kwargs)
+        logging.log(logging.INFO, f"args: {args}, kwargs: {kwargs}")
         return super().get_queryset(*args, **kwargs).filter(
             card__owner=self.request.user.profile
         )
@@ -113,6 +120,8 @@ class CreateIncreaseBalanceRequest(APIView):
             card_number = request.data.get("card_number")
             message = request.data.get("message")
 
+            logging.log(logging.INFO, f"Data from request - card_number: {card_number}, amount: {amount}, message: {message}")
+
             cards = Card.objects.filter(owner__user=request.user, _card_number=card_number)
             if cards.count() == 0:
                 return Response(data={"success": True, "message": "Error. Card not found"}, status=404)
@@ -122,6 +131,7 @@ class CreateIncreaseBalanceRequest(APIView):
             increase_balance_request.card = card
             increase_balance_request.attached_message = message
             increase_balance_request.save()
+            logging.log(logging.INFO, f"IncreaseBalanceRequest created with id: {increase_balance_request.id}")
             return Response(data={"success": True, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
@@ -144,7 +154,13 @@ class GetIncreaseBalanceRequests(APIView):
                 IncreaseBalanceRequest.objects.filter(request_status="waiting"),
                 many=True
             )
-            return Response(data={"success": True, "data": serializer.data, "message": ""}, status=200)
+            data = serializer.data
+            logging.log(
+                logging.INFO,
+                f"Get increase balance requests with status 'waiting': {data}"
+            )
+
+            return Response(data={"success": True, "data": data, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
@@ -168,6 +184,12 @@ class ConsiderIncreaseBalanceRequests(APIView):
             request_id = request.data.get("request_id")
             new_status = request.data.get("status")
 
+            logging.log(logging.INFO,
+                        "User has admin role")
+
+            logging.log(logging.INFO,
+                        f"Data from request - request_id: {request_id}, new_status: {new_status}")
+
             if request_id is None or new_status is None:
                 return Response(data={"success": False, "message": f"Error. Invalid request data"},
                                 status=400)
@@ -190,6 +212,9 @@ class ConsiderIncreaseBalanceRequests(APIView):
             increase_request.request_status = new_status
             increase_request.save()
 
+            logging.log(logging.INFO,
+                        f"Money request considered and now status equal - {increase_request.request_status} ")
+
             return Response(data={"success": True, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
@@ -206,7 +231,13 @@ class GetUserCards(ListAPIView):
                 Card.objects.filter(owner__user=user),
                 many=True
             )
-            return Response(data={"success": True, "data": serializer.data, "message": ""}, status=200)
+
+            data = serializer.data
+
+            logging.log(logging.INFO,
+                        f"Getting user cards: {data} ")
+
+            return Response(data={"success": True, "data": data, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
