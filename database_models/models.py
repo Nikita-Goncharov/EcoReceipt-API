@@ -205,7 +205,10 @@ class Receipt(models.Model):
 
             new_receipt_image_path = f"media/uploads/{year}/{month}/{day}/receipt_{year}_{month}_{day}_{hour}_{minute}.jpg"
             if not os.path.exists(os.path.dirname(new_receipt_image_path)):
+                logging.log(logging.INFO, "Dirs for storing receipt created")
                 os.makedirs(os.path.dirname(new_receipt_image_path))
+            else:
+                logging.log(logging.INFO, f"Dirs for storing receipt already created: {os.path.dirname(new_receipt_image_path)}")
 
             receipt_creator = ReceiptBuilder(
                 "media/receipt_background.jpg",

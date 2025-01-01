@@ -103,8 +103,9 @@ class ReceiptBuilder:
             raise Exception("Error. Full receipt path is not valid")
 
     def set_params(self, data: ReceiptData):
-        self.monospace_header = ImageFont.truetype("./internal_fonts/NotoSansMono-Regular.ttf", 32)
-        self.monospace_paragraph = ImageFont.truetype("./internal_fonts/NotoSansMono-Regular.ttf", 12)
+        logging.log(logging.INFO, f"Current working directory: {os.getcwd()}")
+        self.monospace_header = ImageFont.truetype("./receipt_creation/internal_fonts/NotoSansMono-Regular.ttf", 32)  # TODO: font by default
+        self.monospace_paragraph = ImageFont.truetype("./receipt_creation/internal_fonts/NotoSansMono-Regular.ttf", 12)
         self.header_symbol_width = 16  # 3  -  count of pixels between symbols
         self.paragraph_symbol_width = 5  # 2
 
