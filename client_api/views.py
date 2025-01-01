@@ -144,11 +144,11 @@ class GetIncreaseBalanceRequests(APIView):
         try:
             profiles = Profile.objects.filter(user=request.user)
             if profiles.count() == 0:
-                return Response(data={"success": False, "message": f"Error. There is no profile for this user"}, status=404)
+                return Response(data={"success": False, "message": "Error. There is no profile for this user"}, status=404)
             profile = profiles.first()
 
             if profile.role != "admin":
-                return Response(data={"success": False, "message": f"Error. This action available only for admins"}, status=403)
+                return Response(data={"success": False, "message": "Error. This action available only for admins"}, status=403)
 
             serializer = IncreaseBalanceRequestSerializer(
                 IncreaseBalanceRequest.objects.filter(request_status="waiting"),
@@ -173,12 +173,12 @@ class ConsiderIncreaseBalanceRequests(APIView):
             user = request.user
             profiles = Profile.objects.filter(user=user)
             if profiles.count() == 0:
-                return Response(data={"success": False, "message": f"Error. There is no profile for this user"},
+                return Response(data={"success": False, "message": "Error. There is no profile for this user"},
                                 status=404)
             profile = profiles.first()
 
             if profile.role != "admin":
-                return Response(data={"success": False, "message": f"Error. This action available only for admins"},
+                return Response(data={"success": False, "message": "Error. This action available only for admins"},
                                 status=403)
 
             request_id = request.data.get("request_id")
@@ -191,18 +191,18 @@ class ConsiderIncreaseBalanceRequests(APIView):
                         f"Data from request - request_id: {request_id}, new_status: {new_status}")
 
             if request_id is None or new_status is None:
-                return Response(data={"success": False, "message": f"Error. Invalid request data"},
+                return Response(data={"success": False, "message": "Error. Invalid request data"},
                                 status=400)
 
             increase_requests = IncreaseBalanceRequest.objects.filter(pk=request_id, request_status="waiting")
 
             if increase_requests.count() == 0:
-                return Response(data={"success": False, "message": f"Error. There is no waiting increase balance request with that id"},
+                return Response(data={"success": False, "message": "Error. There is no waiting increase balance request with that id"},
                                 status=404)
             increase_request = increase_requests.first()
 
             if new_status != "accepted" and new_status != "denied":
-                return Response(data={"success": False, "message": f"Error. Incorrect status in request body"},
+                return Response(data={"success": False, "message": "Error. Incorrect status in request body"},
                                 status=400)
 
             if new_status == "accepted":

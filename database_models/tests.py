@@ -6,7 +6,6 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from .models import Profile, Card, Company, Product, Receipt, Transaction, ServiceSetting, IncreaseBalanceRequest
-from .utils import check_hex_digit
 
 
 def check_created_updated_fields(instance: models.Model):

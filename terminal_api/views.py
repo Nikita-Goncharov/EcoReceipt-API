@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from telegram_bot.bot_send_receipt import run_async_in_process
 from client_api.views import GetCardBalance
-from database_models.models import Card, Company, Receipt, Transaction, ServiceSetting
+from database_models.models import Card, Company, Receipt, Transaction
 
 
 class WriteOffMoney(APIView):
@@ -38,7 +38,7 @@ class WriteOffMoney(APIView):
             if response.status_code != 200:
                 return Response(data={
                     "success": False,
-                    "message": f"Error. Card UID is incorrect.",
+                    "message": "Error. Card UID is incorrect.",
                     "terminal_message": "Card is invalid"
                 }, status=404)
 
@@ -48,7 +48,7 @@ class WriteOffMoney(APIView):
             if Decimal(card_current_balance) < write_off_amount:  # Check if card balance bigger then write off sum
                 return Response(data={
                     "success": False,
-                    "message": f"Error. Card balance lower than write off sum.",
+                    "message": "Error. Card balance lower than write off sum.",
                     "terminal_message": "Balance is low"
                 }, status=400)
 
@@ -56,11 +56,11 @@ class WriteOffMoney(APIView):
             if not companies.count():  # Check if company registered in system
                 return Response(data={
                     "success": False,
-                    "message": f"Error. There is no registered company with this token.",
+                    "message": "Error. There is no registered company with this token.",
                     "terminal_message": "Token is invalid"
                 }, status=404)
 
-            logging.log(logging.INFO, f"Start of making payment transaction")
+            logging.log(logging.INFO, "Start of making payment transaction")
             card = Card.objects.get(_card_uid=card_uid)
             company = companies.first()
 
@@ -83,7 +83,7 @@ class WriteOffMoney(APIView):
             transaction.card_balance_after = card.balance
             transaction.company_balance_after = company.balance
             transaction.save()
-            logging.log(logging.INFO, f"End of making payment transaction")
+            logging.log(logging.INFO, "End of making payment transaction")
 
             receipt_path = transaction.receipt.get_receipt_img()
             logging.log(logging.INFO, f"Generated receipt path: {receipt_path}")
@@ -93,7 +93,7 @@ class WriteOffMoney(APIView):
             tokens = Token.objects.filter(user=card.owner.user)
             logging.log(logging.INFO, f"Check if user logged in system by tokens: {tokens}")
             if tokens.count() != 0:
-                logging.log(logging.INFO, f"Making subprocess for async sending receipt image in telegram bot")
+                logging.log(logging.INFO, "Making subprocess for async sending receipt image in telegram bot")
                 request_site = get_current_site(request)
                 logging.log(logging.INFO, f"Current site: {request_site.domain}")
                 process = Process(

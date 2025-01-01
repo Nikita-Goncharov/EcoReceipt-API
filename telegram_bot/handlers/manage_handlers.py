@@ -1,5 +1,4 @@
 import os
-import logging
 
 from aiohttp import ClientSession
 from aiogram.fsm.context import FSMContext
@@ -9,7 +8,7 @@ from aiogram import F, Router
 
 from bot import bot
 from fsmcontext_types import SendIncreaseBalanceRequest
-from redis_db import save_user_auth_status, get_user_auth_status
+from redis_db import get_user_auth_status
 from keyboards import show_10_receipts, show_cards, send_increase_balance_request, view_increase_balance_request, keyboard_for_admin, keyboard_for_anon, keyboard_for_logged_in, generate_view_requests_inline_keyboard
 
 manage_router = Router()
@@ -27,7 +26,7 @@ async def command_start_handler(message: Message):
     else:
         keyboard = keyboard_for_anon
 
-    await message.answer(f"Welcome to EcoReceipt bot!\nSelect action:", reply_markup=keyboard)
+    await message.answer("Welcome to EcoReceipt bot!\nSelect action:", reply_markup=keyboard)
 
 
 @manage_router.message(F.text == show_10_receipts.text)
@@ -192,4 +191,4 @@ async def consider_increase_balance_request(call: CallbackQuery):
 
 @manage_router.message()
 async def no_matched_handler(message: Message):
-    await message.answer(f"There is no this variant")
+    await message.answer("There is no this variant")

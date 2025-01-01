@@ -1,9 +1,6 @@
-import json
-import logging
 import random
 from decimal import Decimal
 
-from rest_framework.request import Request
 from rest_framework.authtoken.models import Token
 from django.test import TestCase, Client, RequestFactory
 from django.contrib.auth.models import User
