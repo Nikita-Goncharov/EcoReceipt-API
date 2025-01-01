@@ -32,8 +32,8 @@ jobs:
 
       - name: Install ubuntu packages
         run: |
-          apt-get update
-          apt-get install libgl1
+          apt-get update -y
+          apt-get install libgl1 -y
 
       - name: Install Dependencies
         run: |
