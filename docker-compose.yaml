@@ -1,0 +1,65 @@
+services:
+  django:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: > 
+      sh -c "
+      python manage.py makemigrations && 
+      python manage.py migrate && 
+      python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./:/app/
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env.docker
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redisdata:/data
+
+
+  tg_bot:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+
+    command: python telegram_bot/bot.py
+
+    env_file:
+      - ./.env.docker
+
+    depends_on:
+      - redis
+      - db
+      - django
+#    networks:
+#      default:
+#        aliases:
+#          - redis
+#    expose:
+#      - "6379"
+
+
+#  redis:
+#    image: redis:
+#
+#  tg_bot:
+#
+
+volumes:
+  postgres_data:
+  redisdata:
