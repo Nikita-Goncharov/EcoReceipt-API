@@ -51,8 +51,9 @@ $ python manage.py test
 
 ## Ruff linter and formatter start checking
 ```bash
-$ ruff check
-$ ruff format
+$ ruff check  # Lint all files in the current directory.
+$ ruff check --fix  # Lint all files in the current directory, and fix any fixable errors.
+$ ruff format  # Format all files in the current directory.
 ```
 
 ## Production setup
