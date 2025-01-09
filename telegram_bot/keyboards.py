@@ -48,8 +48,8 @@ keyboard_for_anon = ReplyKeyboardMarkup(
 )
 
 
-def generate_view_requests_inline_keyboard(request_id: int) -> InlineKeyboardMarkup:
+def generate_view_requests_inline_keyboard(request_id: int, telegram_chat_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="Accept", callback_data=f"accept_request:{request_id}"),
-        InlineKeyboardButton(text="Deny", callback_data=f"deny_request:{request_id}")
+        InlineKeyboardButton(text="Accept", callback_data=f"accept_request:{request_id}:{telegram_chat_id}"),
+        InlineKeyboardButton(text="Deny", callback_data=f"deny_request:{request_id}:{telegram_chat_id}")
     ]])

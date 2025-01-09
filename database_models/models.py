@@ -17,7 +17,7 @@ class Profile(models.Model):
         "admin": "admin",
         "user": "user"
     }
-    user = models.OneToOneField(to=User, on_delete=models.CASCADE, related_name="profile")
+    user = models.OneToOneField(to=User, on_delete=models.PROTECT, related_name="profile")
     telegram_chat_id = models.CharField(max_length=20, null=True, blank=True, default="")  # TODO: telegram user id ???
     role = models.CharField(choices=ROLES, default=ROLES["user"])
     created = models.DateTimeField(auto_now_add=True)
@@ -33,7 +33,7 @@ class Card(models.Model):
     _balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     _card_uid = models.CharField(max_length=8, unique=True, null=True, blank=True)
     _pin_code = models.CharField(max_length=4, null=True, blank=True)
-    owner = models.ForeignKey(to=Profile, on_delete=models.CASCADE, related_name="cards")
+    owner = models.ForeignKey(to=Profile, on_delete=models.PROTECT, related_name="cards")
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -175,7 +175,7 @@ class Product(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
-    company_owner = models.ForeignKey(to=Company, on_delete=models.CASCADE, related_name="products")
+    company_owner = models.ForeignKey(to=Company, on_delete=models.PROTECT, related_name="products")
 
     def __str__(self):
         return f"Product: {self.name}"
@@ -244,9 +244,9 @@ class Receipt(models.Model):
 
 
 class Transaction(models.Model):
-    card = models.ForeignKey(to=Card, on_delete=models.DO_NOTHING, related_name="transactions")
-    company = models.ForeignKey(to=Company, on_delete=models.DO_NOTHING)
-    receipt = models.OneToOneField(to=Receipt, on_delete=models.CASCADE, related_name="transaction")
+    card = models.ForeignKey(to=Card, on_delete=models.PROTECT, related_name="transactions")
+    company = models.ForeignKey(to=Company, on_delete=models.PROTECT)
+    receipt = models.OneToOneField(to=Receipt, on_delete=models.PROTECT, related_name="transaction")
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     card_balance_before = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -300,7 +300,8 @@ class IncreaseBalanceRequest(models.Model):
     }
 
     requested_money = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    card = models.ForeignKey(Card, on_delete=models.CASCADE)
+    card = models.ForeignKey(Card, on_delete=models.PROTECT)
+    telegram_chat_id = models.CharField(max_length=20, null=True, blank=True, default="")
     attached_message = models.TextField(null=True, blank=True)
     request_status = models.CharField(choices=STATUSES, default=STATUSES["waiting"])
 

@@ -112,7 +112,7 @@ class RegisterCompany(APIView):
             if company_serializer.is_valid():
                 company = company_serializer.save()
                 company.generate_token()
-                return Response(data={"success": True, "message": ""})
+                return Response(data={"success": True, "data": {"name": company.name, "company_token": company.company_token}, "message": ""})
             else:
                 return Response(data={"success": False, "message": "Error. Request data is not valid."}, status=400)
         except Exception as ex:

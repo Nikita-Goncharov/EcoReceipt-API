@@ -118,9 +118,10 @@ class CreateIncreaseBalanceRequest(APIView):
         try:
             amount = request.data.get("amount", 0)
             card_number = request.data.get("card_number")
+            telegram_chat_id = request.data.get("telegram_chat_id", "")
             message = request.data.get("message")
 
-            logging.log(logging.INFO, f"Data from request - card_number: {card_number}, amount: {amount}, message: {message}")
+            logging.log(logging.INFO, f"Data from request - card_number: {card_number}, telegram_chat_id: {telegram_chat_id}, amount: {amount}, message: {message}")
 
             cards = Card.objects.filter(owner__user=request.user, _card_number=card_number)
             if cards.count() == 0:
@@ -129,6 +130,7 @@ class CreateIncreaseBalanceRequest(APIView):
             increase_balance_request = IncreaseBalanceRequest()
             increase_balance_request.requested_money = Decimal(amount)
             increase_balance_request.card = card
+            increase_balance_request.telegram_chat_id = telegram_chat_id
             increase_balance_request.attached_message = message
             increase_balance_request.save()
             logging.log(logging.INFO, f"IncreaseBalanceRequest created with id: {increase_balance_request.id}")

@@ -311,17 +311,17 @@ async def get_company_building(message: Message, state: FSMContext):
                 json=json_data
         ) as response:
             if response.status == 200:
-                reply = "Your company was created"
+                response_json = await response.json()
+                created_company_data = response_json.get("data")
+                if created_company_data is not None:
+                    company_name, company_token = created_company_data.get("name", ""), created_company_data.get("company_token", "")
+                else:
+                    company_name, company_token = "", ""
+                reply = f"Your company was created\nCompany name: `{company_name}`\nCompany token: `{company_token}`"
             else:
                 logging.info(f"Error. {await response.json()}")
                 reply = "Error. Your company was not created. Try again."
 
-    user_auth_data = await get_user_auth_status(message.from_user.id)
 
-    if not user_auth_data["is_logged_in"]:  # TODO: really necessary??
-        keyboard = keyboard_for_anon
-    else:
-        keyboard = keyboard_for_logged_in
-
-    await message.answer(reply, parse_mode="Markdown", reply_markup=keyboard)
+    await message.answer(reply, parse_mode="Markdown", reply_markup=keyboard_for_anon)  # if company was created then user is not logged in
     await state.clear()
