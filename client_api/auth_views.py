@@ -49,10 +49,14 @@ class LoginUser(APIView):
 
             users = User.objects.filter(email=email)
             if not users.count():
-                return Response(data={"success": False, "message": "Error. There is no user with that credentials."}, status=404)
+                return Response(
+                    data={"success": False, "message": "Error. There is no user with that credentials."}, status=404
+                )
             user = users.first()
             if not user.check_password(password):
-                return Response(data={"success": False, "message": "Error. There is no user with that credentials."}, status=404)
+                return Response(
+                    data={"success": False, "message": "Error. There is no user with that credentials."}, status=404
+                )
 
             tokens = Token.objects.filter(user=user)
             if tokens.count() != 0:
@@ -106,13 +110,21 @@ class RegisterCompany(APIView):
         try:
             name = request.data.get("name")
             if Company.objects.filter(name=name).count():
-                return Response(data={"success": False, "message": "Error. There is company with that data."}, status=500)
+                return Response(
+                    data={"success": False, "message": "Error. There is company with that data."}, status=500
+                )
 
             company_serializer = CompanySerializer(data=request.data)
             if company_serializer.is_valid():
                 company = company_serializer.save()
                 company.generate_token()
-                return Response(data={"success": True, "data": {"name": company.name, "company_token": company.company_token}, "message": ""})
+                return Response(
+                    data={
+                        "success": True,
+                        "data": {"name": company.name, "company_token": company.company_token},
+                        "message": "",
+                    }
+                )
             else:
                 return Response(data={"success": False, "message": "Error. Request data is not valid."}, status=400)
         except Exception as ex:
@@ -127,7 +139,9 @@ class GetUserInfo(APIView):
             user = request.user
             profiles = Profile.objects.filter(user=user)
             if profiles.count() == 0:
-                return Response(data={"success": False, "message": "Error. There is no profile for this user"}, status=404)
+                return Response(
+                    data={"success": False, "message": "Error. There is no profile for this user"}, status=404
+                )
             profile = profiles.first()
 
             serializer = ProfileSerializer(profile)

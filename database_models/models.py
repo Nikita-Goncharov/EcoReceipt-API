@@ -13,10 +13,7 @@ from receipt_creation.receipt_builder import ReceiptBuilder, ReceiptData, Receip
 
 
 class Profile(models.Model):
-    ROLES = {
-        "admin": "admin",
-        "user": "user"
-    }
+    ROLES = {"admin": "admin", "user": "user"}
     user = models.OneToOneField(to=User, on_delete=models.PROTECT, related_name="profile")
     telegram_chat_id = models.CharField(max_length=20, null=True, blank=True, default="")  # TODO: telegram user id ???
     role = models.CharField(choices=ROLES, default=ROLES["user"])
@@ -139,10 +136,10 @@ class Company(models.Model):
         return f"{self.country}, {self.city}, {self.street} {self.building}"
 
     def generate_token(self):
-        """ This method produces very distinct outputs for different input strings,
-            and it’s generally secure against accidental collisions in typical usage scenarios
+        """This method produces very distinct outputs for different input strings,
+        and it’s generally secure against accidental collisions in typical usage scenarios
 
-            SHA256 hash -> hex to decimal -> using mod by 12 from big int we are getting unique symbol -> floor divide int
+        SHA256 hash -> hex to decimal -> using mod by 12 from big int we are getting unique symbol -> floor divide int
 
         """
 
@@ -158,7 +155,7 @@ class Company(models.Model):
         num_hash = int(hex_hash, 16)
 
         # Create the unique string by mapping the number to the allowed characters
-        unique_string = ''
+        unique_string = ""
         for _ in range(15):
             unique_string += allowed_chars[num_hash % allowed_len]
             num_hash //= allowed_len
@@ -182,7 +179,7 @@ class Product(models.Model):
 
 
 class Receipt(models.Model):
-    img = models.ImageField(upload_to='uploads/%Y/%m/%d/', blank=True, null=True)
+    img = models.ImageField(upload_to="uploads/%Y/%m/%d/", blank=True, null=True)
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -201,38 +198,48 @@ class Receipt(models.Model):
 
     def _generate_receipt_img(self) -> str:
         try:
-            year, month, day, hour, minute = self.created.year, self.created.month, self.created.day, self.created.hour, self.created.minute
+            year, month, day, hour, minute = (
+                self.created.year,
+                self.created.month,
+                self.created.day,
+                self.created.hour,
+                self.created.minute,
+            )
 
-            new_receipt_image_path = f"media/uploads/{year}/{month}/{day}/receipt_{year}_{month}_{day}_{hour}_{minute}.jpg"
+            new_receipt_image_path = (
+                f"media/uploads/{year}/{month}/{day}/receipt_{year}_{month}_{day}_{hour}_{minute}.jpg"
+            )
             if not os.path.exists(os.path.dirname(new_receipt_image_path)):
                 logging.log(logging.INFO, "Dirs for storing receipt created")
                 os.makedirs(os.path.dirname(new_receipt_image_path))
             else:
-                logging.log(logging.INFO, f"Dirs for storing receipt already created: {os.path.dirname(new_receipt_image_path)}")
+                logging.log(
+                    logging.INFO, f"Dirs for storing receipt already created: {os.path.dirname(new_receipt_image_path)}"
+                )
 
             receipt_creator = ReceiptBuilder(
-                "media/receipt_background.jpg",
-                "media/exact_receipt.jpg",
-                new_receipt_image_path
+                "media/receipt_background.jpg", "media/exact_receipt.jpg", new_receipt_image_path
             )
             products = get_random_goods_with_all_amount(self.transaction.amount)
-            products_part_height = 30 + len(products) * 25 + 5  # top border height + products height + bottom border height
+            products_part_height = (
+                30 + len(products) * 25 + 5
+            )  # top border height + products height + bottom border height
 
             data: ReceiptData = {
                 "header": {
                     "title": ReceiptDataItem(self.transaction.company.name, 70),
                     "address": ReceiptDataItem(self.transaction.company.address, 30),
                     "hotline_phone": ReceiptDataItem(self.transaction.company.hotline_phone, 30),
-                    "datetime": ReceiptDataItem(self.created, 20)
+                    "datetime": ReceiptDataItem(self.created, 20),
                 },
                 "body": {
                     "products": ReceiptDataItem(products, products_part_height),
-                    "amount": ReceiptDataItem(self.transaction.amount, 30)
+                    "amount": ReceiptDataItem(self.transaction.amount, 30),
                 },
                 "footer": {
                     "card_number": ReceiptDataItem(f"**** **** **** {self.transaction.card.card_number[-4:]}", 30),
-                    "wish_phrase": ReceiptDataItem("THANK YOU FOR SHOPPING!", 30)
-                }
+                    "wish_phrase": ReceiptDataItem("THANK YOU FOR SHOPPING!", 30),
+                },
             }
             logging.log(logging.INFO, f"Data for making receipt: {data}")
             receipt_creator.set_params(data)
@@ -264,8 +271,14 @@ class Transaction(models.Model):
 
 class ServiceSetting(models.Model):
     class TYPES(models.TextChoices):
-        INT = "int", "INT",
-        TEXT = "str", "TEXT",
+        INT = (
+            "int",
+            "INT",
+        )
+        TEXT = (
+            "str",
+            "TEXT",
+        )
         BOOL = "bool", "BOOL"
 
     name = models.CharField(max_length=100, null=True, blank=True)
@@ -292,12 +305,7 @@ class ServiceSetting(models.Model):
 
 
 class IncreaseBalanceRequest(models.Model):
-    STATUSES = {
-        "waiting": "waiting",
-        "accepted": "accepted",
-        "considered": "considered",
-        "denied": "denied"
-    }
+    STATUSES = {"waiting": "waiting", "accepted": "accepted", "considered": "considered", "denied": "denied"}
 
     requested_money = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     card = models.ForeignKey(Card, on_delete=models.PROTECT)

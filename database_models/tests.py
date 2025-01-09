@@ -78,7 +78,7 @@ class CompanyTestCase(TestCase):
             country="Country",
             city="City",
             street="Street",
-            building="12"
+            building="12",
         )
         self.company.generate_token()
 
@@ -130,7 +130,7 @@ class ProductTestCase(TestCase):
             country="Country",
             city="City",
             street="Street",
-            building="12"
+            building="12",
         )
         self.product = Product.objects.create(name="Product1", description="Description", company_owner=self.company)
 
@@ -176,7 +176,7 @@ class TransactionTestCase(TestCase):
             country="Country",
             city="City",
             street="Street",
-            building="12"
+            building="12",
         )
 
         self.receipt = Receipt.objects.create()
@@ -211,17 +211,10 @@ class TransactionTestCase(TestCase):
 
 class ServiceSettingTestCase(TestCase):
     def setUp(self):
-        self.setting = ServiceSetting.objects.create(
-            name="Setting1",
-            value="10",
-            description="Description 1"
-        )
+        self.setting = ServiceSetting.objects.create(name="Setting1", value="10", description="Description 1")
 
         self.setting1 = ServiceSetting.objects.create(
-            name="Setting2",
-            value="11",
-            value_type="int",
-            description="Description 2"
+            name="Setting2", value="11", value_type="int", description="Description 2"
         )
 
     def test_service_setting_values(self):

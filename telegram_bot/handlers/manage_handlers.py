@@ -9,7 +9,16 @@ from aiogram import F, Router
 from bot import bot
 from fsmcontext_types import SendIncreaseBalanceRequest
 from redis_db import get_user_auth_status
-from keyboards import show_10_receipts, show_cards, send_increase_balance_request, view_increase_balance_request, keyboard_for_admin, keyboard_for_anon, keyboard_for_logged_in, generate_view_requests_inline_keyboard
+from keyboards import (
+    show_10_receipts,
+    show_cards,
+    send_increase_balance_request,
+    view_increase_balance_request,
+    keyboard_for_admin,
+    keyboard_for_anon,
+    keyboard_for_logged_in,
+    generate_view_requests_inline_keyboard,
+)
 
 manage_router = Router()
 SERVER_API_DOMAIN = os.getenv("SERVER_API_DOMAIN")
@@ -32,12 +41,12 @@ async def command_start_handler(message: Message):
 @manage_router.message(F.text == show_10_receipts.text)
 async def show_receipts_handler(message: Message):
     user_auth_data = await get_user_auth_status(message.from_user.id)
-    headers = {
-        "Authorization": f'Token {user_auth_data["token"]}'
-    }
+    headers = {"Authorization": f'Token {user_auth_data["token"]}'}
 
     async with ClientSession() as session:
-        async with session.get(f"{SERVER_API_DOMAIN}get_user_transactions?count=10&offset=0", headers=headers) as response:
+        async with session.get(
+            f"{SERVER_API_DOMAIN}get_user_transactions?count=10&offset=0", headers=headers
+        ) as response:
             if response.ok:
                 response_data = await response.json()
                 if response_data["results"]:
@@ -50,7 +59,7 @@ async def show_receipts_handler(message: Message):
                         await bot.send_photo(
                             chat_id=message.chat.id,
                             photo=photo,
-                            caption=f"Card: {card_number}\nCard balance after this operation: {card_balance}"
+                            caption=f"Card: {card_number}\nCard balance after this operation: {card_balance}",
                         )
                 else:
                     await message.answer("There are not receipts for now")
@@ -61,9 +70,7 @@ async def show_receipts_handler(message: Message):
 @manage_router.message(F.text == show_cards.text)
 async def show_cards_handler(message: Message):
     user_auth_data = await get_user_auth_status(message.from_user.id)
-    headers = {
-        "Authorization": f'Token {user_auth_data["token"]}'
-    }
+    headers = {"Authorization": f'Token {user_auth_data["token"]}'}
 
     async with ClientSession() as session:
         async with session.get(f"{SERVER_API_DOMAIN}get_cards/", headers=headers) as response:
@@ -76,7 +83,6 @@ async def show_cards_handler(message: Message):
                             "<b>------💳Card------</b>\n"
                             f"Card number: {card['_card_number']}\n"
                             f"Balance: {card['_balance']}\n"
-                            
                             f"Cvv: <span class='tg-spoiler'>{card['_cvv']}</span>\n"
                             f"Card uid: <span class='tg-spoiler'>{card['_card_uid']}</span>\n"
                             "\n"
@@ -91,8 +97,7 @@ async def show_cards_handler(message: Message):
 
 @manage_router.message(F.text == send_increase_balance_request.text)
 async def send_increase_request(message: Message, state: FSMContext):
-    instructions = ("Send amount with which you want to increase your balance.\n"
-                    "For example: `10`")
+    instructions = "Send amount with which you want to increase your balance.\n" "For example: `10`"
 
     await message.answer(instructions, parse_mode="Markdown")
     await state.set_state(SendIncreaseBalanceRequest.amount)
@@ -102,8 +107,7 @@ async def send_increase_request(message: Message, state: FSMContext):
 async def get_amount(message: Message, state: FSMContext):
     await state.update_data(amount=message.text)
 
-    instructions = ("Now send card number for increasing.\n"
-                    "For example: `1111111111111111`")
+    instructions = "Now send card number for increasing.\n" "For example: `1111111111111111`"
 
     await message.answer(instructions, parse_mode="Markdown")
     await state.set_state(SendIncreaseBalanceRequest.card_number)
@@ -124,9 +128,7 @@ async def get_message(message: Message, state: FSMContext):
     await state.update_data(message=message.text)
 
     user_auth_data = await get_user_auth_status(message.from_user.id)
-    headers = {
-        "Authorization": f'Token {user_auth_data["token"]}'
-    }
+    headers = {"Authorization": f'Token {user_auth_data["token"]}'}
     data = await state.get_data()
 
     if not data["amount"].isdigit():
@@ -136,11 +138,13 @@ async def get_message(message: Message, state: FSMContext):
         "amount": int(data["amount"]),
         "card_number": data["card_number"],
         "telegram_chat_id": str(message.chat.id),
-        "message": data["message"]
+        "message": data["message"],
     }
 
     async with ClientSession() as session:
-        async with session.post(f"{SERVER_API_DOMAIN}create_increase_balance_request/", headers=headers, json=body) as response:
+        async with session.post(
+            f"{SERVER_API_DOMAIN}create_increase_balance_request/", headers=headers, json=body
+        ) as response:
             if response.status == 200:
                 answer_text = "Your request was successfully sent"
             else:
@@ -154,9 +158,7 @@ async def get_message(message: Message, state: FSMContext):
 @manage_router.message(F.text == view_increase_balance_request.text)
 async def view_increase_request(message: Message):
     user_auth_data = await get_user_auth_status(message.from_user.id)
-    headers = {
-        "Authorization": f'Token {user_auth_data["token"]}'
-    }
+    headers = {"Authorization": f'Token {user_auth_data["token"]}'}
 
     async with ClientSession() as session:
         async with session.get(f"{SERVER_API_DOMAIN}get_increase_balance_requests/", headers=headers) as response:
@@ -177,24 +179,20 @@ async def view_increase_request(message: Message):
                         await message.answer(
                             answer_text,
                             parse_mode="html",
-                            reply_markup=generate_view_requests_inline_keyboard(money_request["id"], money_request['card']['owner']['telegram_chat_id'])
+                            reply_markup=generate_view_requests_inline_keyboard(
+                                money_request["id"], money_request["card"]["owner"]["telegram_chat_id"]
+                            ),
                         )
                 else:
-                    await message.answer(
-                        "There are not money requests or all requests are considered"
-                    )
+                    await message.answer("There are not money requests or all requests are considered")
             else:
-                await message.answer(
-                    "Error. While fetching money requests. Try again."
-                )
+                await message.answer("Error. While fetching money requests. Try again.")
 
 
 @manage_router.callback_query(F.data.contains("accept_request") | F.data.contains("deny_request"))
 async def consider_increase_balance_request(call: CallbackQuery):
     user_auth_data = await get_user_auth_status(call.from_user.id)
-    headers = {
-        "Authorization": f'Token {user_auth_data["token"]}'
-    }
+    headers = {"Authorization": f'Token {user_auth_data["token"]}'}
     action, request_id, telegram_chat_id = call.data.split(":")
     body = {"request_id": request_id}
     if action == "accept_request":
@@ -203,11 +201,18 @@ async def consider_increase_balance_request(call: CallbackQuery):
         body["status"] = "denied"
 
     async with ClientSession() as session:
-        async with session.post(f"{SERVER_API_DOMAIN}consider_increase_balance_request/", headers=headers, json=body) as response:
+        async with session.post(
+            f"{SERVER_API_DOMAIN}consider_increase_balance_request/", headers=headers, json=body
+        ) as response:
             if response.ok:
-                await bot.send_message(int(telegram_chat_id), f"Your request was considered with status: {body['status']}.")
+                await bot.send_message(
+                    int(telegram_chat_id), f"Your request was considered with status: {body['status']}."
+                )
             else:
-                await bot.send_message(int(telegram_chat_id), f"Admin considered your request, but something went wrong. Please resend your request again.")
+                await bot.send_message(
+                    int(telegram_chat_id),
+                    "Admin considered your request, but something went wrong. Please resend your request again.",
+                )
             await call.message.delete_reply_markup()
 
 

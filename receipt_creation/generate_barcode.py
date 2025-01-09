@@ -19,7 +19,7 @@ class BarCodeOptions(TypedDict):
 
 def generate_barcode_img(options: BarCodeOptions, filename_path: str) -> Image:
     if os.path.exists(os.path.dirname(filename_path)):
-        ean = barcode.get('ean13', '091487112432', writer=ImageWriter())
+        ean = barcode.get("ean13", "091487112432", writer=ImageWriter())
         filename = ean.save(filename_path, options=options)
 
         # Do transparent background
