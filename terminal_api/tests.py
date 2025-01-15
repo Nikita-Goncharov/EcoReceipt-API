@@ -27,53 +27,34 @@ class WriteOffMoneyViewTestCase(TestCase):
             country="Ukraine",
             city="Kharkiv",
             street="Sumska",
-            building="12"
+            building="12",
         )
         self.company.generate_token()
 
     def test_incorrect_request_body(self):
-        body = {
-            "amount": 10,
-            "company_token": self.company.company_token
-        }
+        body = {"amount": 10, "company_token": self.company.company_token}
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 400)
 
     def test_incorrect_card_uid(self):
-        body = {
-            "card_uid": "2eso32i",
-            "amount": 10,
-            "company_token": self.company.company_token
-        }
+        body = {"card_uid": "2eso32i", "amount": 10, "company_token": self.company.company_token}
         response = self.client.post(self.url, body)
 
         self.assertEqual(response.status_code, 404)
 
     def test_low_balance(self):
-        body = {
-            "card_uid": self.card.card_uid,
-            "amount": 999_999_999,
-            "company_token": self.company.company_token
-        }
+        body = {"card_uid": self.card.card_uid, "amount": 999_999_999, "company_token": self.company.company_token}
         response = self.client.post(self.url, body)
 
         self.assertEqual(response.status_code, 400)
 
     def test_incorrect_company_token(self):
-        body = {
-            "card_uid": self.card.card_uid,
-            "amount": 10,
-            "company_token": "1"
-        }
+        body = {"card_uid": self.card.card_uid, "amount": 10, "company_token": "1"}
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 404)
 
     def test_correct_request(self):
-        body = {
-            "card_uid": self.card.card_uid,
-            "amount": 10,
-            "company_token": self.company.company_token
-        }
+        body = {"card_uid": self.card.card_uid, "amount": 10, "company_token": self.company.company_token}
         response = self.client.post(self.url, body)
         response_data = response.json()
 
@@ -103,4 +84,3 @@ class WriteOffMoneyViewTestCase(TestCase):
 
         os.remove(receipt_path)
         os.remove(barcode_path)
-

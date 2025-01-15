@@ -9,16 +9,17 @@ class CardAdmin(admin.ModelAdmin):
 
 @admin.register(Receipt)
 class ReceiptAdmin(admin.ModelAdmin):
-    list_display = ('img', "created", "updated")
+    list_display = ("img", "created", "updated")
 
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ("user__username", "cards_list", "created", "updated")
+    list_display = ("user__username", "cards_list", "role", "telegram_chat_id", "created", "updated")
 
     def cards_list(self, obj):
         return ", ".join([card.card_number for card in obj.cards.all()])
         pass
+
     cards_list.short_description = "Cards"
 
 
@@ -29,12 +30,22 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ('name', '_company_token', '_balance', "created", "updated")
+    list_display = ("name", "_company_token", "_balance", "created", "updated")
 
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ("card", "company", "receipt", "card_balance_before", "card_balance_after", "company_balance_before", "company_balance_after", "created", "updated")
+    list_display = (
+        "card",
+        "company",
+        "receipt",
+        "card_balance_before",
+        "card_balance_after",
+        "company_balance_before",
+        "company_balance_after",
+        "created",
+        "updated",
+    )
 
 
 @admin.register(ServiceSetting)

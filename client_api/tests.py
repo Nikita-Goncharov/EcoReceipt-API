@@ -14,12 +14,9 @@ def do_user_login(email: str, password: str, username: str = "testname") -> tupl
     user = User.objects.create(username=username, email=email)
     user.set_password(password)
     user.save()
-    profile = Profile.objects.create(user=user, telegram_chat_id="1111111")
+    Profile.objects.create(user=user, telegram_chat_id="1111111")
 
-    body = {
-        "email": user.email,
-        "password": password
-    }
+    body = {"email": user.email, "password": password}
 
     response = client.post("/client_api/login/", body)
     TestCase.assertEqual(TestCase(), response.status_code, 200)
@@ -38,7 +35,7 @@ class RegisterUserTestCase(TestCase):
             "first_name": "Bob",
             "last_name": "Smith",
             "password": "password1213",
-            "telegram_chat_id": "2334292"
+            "telegram_chat_id": "2334292",
         }
 
         response = self.client.post(self.url, body)
@@ -51,13 +48,13 @@ class RegisterUserTestCase(TestCase):
             "last_name": "Smith",
             "email": "admin@gmail.com",
             "password": "password1213",
-            "telegram_chat_id": "2334292"
+            "telegram_chat_id": "2334292",
         }
 
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 200)
 
-        profiles = Profile.objects.order_by('-created')
+        profiles = Profile.objects.order_by("-created")
         self.assertNotEqual(profiles.count(), 0)
 
         profile = profiles.first()
@@ -78,27 +75,19 @@ class LoginTestCase(TestCase):
         self.user.save()
 
     def test_incorrect_body(self):
-        body = {
-            "email": self.user.email
-        }
+        body = {"email": self.user.email}
 
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 400)
 
     def test_incorrect_body_email(self):
-        body = {
-            "email": "test111@gmail.com",
-            "password": self.password
-        }
+        body = {"email": "test111@gmail.com", "password": self.password}
 
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 404)
 
     def test_correct_request(self):
-        body = {
-            "email": self.user.email,
-            "password": self.password
-        }
+        body = {"email": self.user.email, "password": self.password}
 
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 200)
@@ -114,17 +103,13 @@ class LogoutTestCase(TestCase):
         self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
 
     def test_incorrect_token(self):
-        headers = {
-            "Authorization": "Token 898w9735bo359"
-        }
+        headers = {"Authorization": "Token 898w9735bo359"}
 
         response = self.client.post(self.url, headers=headers)
         self.assertEqual(response.status_code, 401)
 
     def test_correct_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
         response = self.client.post(self.url, headers=headers)
         self.assertEqual(response.status_code, 200)
@@ -140,9 +125,7 @@ class RegisterCardTestCase(TestCase):
         self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
 
     def test_incorrect_body(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
         body = {}
 
@@ -150,30 +133,22 @@ class RegisterCardTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_incorrect_card_uid(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "card_uid": "101010101010"
-        }
+        body = {"card_uid": "101010101010"}
 
         response = self.client.post(self.url, body, headers=headers)
         self.assertEqual(response.status_code, 400)
 
     def test_correct_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "card_uid": "34abc333"
-        }
+        body = {"card_uid": "34abc333"}
 
         response = self.client.post(self.url, body, headers=headers)
         self.assertEqual(response.status_code, 200)
 
-        cards = Card.objects.order_by('-created')
+        cards = Card.objects.order_by("-created")
         self.assertNotEqual(cards.count(), 0)
 
         card = cards.first()
@@ -201,13 +176,13 @@ class RegisterCompanyTestCase(TestCase):
             "country": "Country",
             "city": "City",
             "street": "Street",
-            "building": "12"
+            "building": "12",
         }
 
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 200)
 
-        companies = Company.objects.order_by('-created')
+        companies = Company.objects.order_by("-created")
         self.assertNotEqual(companies.count(), 0)
 
         company = companies.first()
@@ -229,17 +204,13 @@ class GetUserInfoTestCase(TestCase):
         self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
 
     def test_incorrect_token(self):
-        headers = {
-            "Authorization": "Token 898w9735bo359"
-        }
+        headers = {"Authorization": "Token 898w9735bo359"}
 
         response = self.client.get(self.url, headers=headers)
         self.assertEqual(response.status_code, 401)
 
     def test_correct_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
         response = self.client.get(self.url, headers=headers)
         self.assertEqual(response.status_code, 200)
@@ -260,57 +231,38 @@ class IncreaseCardBalanceTestCase(TestCase):
         self.card.save()
 
     def test_incorrect_body(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "amount": 10
-        }
+        body = {"amount": 10}
 
         response = self.client.post(self.url, body, headers=headers)
         self.assertEqual(response.status_code, 400)
 
     def test_incorrect_card_number(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "card_number": "1",
-            "amount": 10
-        }
+        body = {"card_number": "1", "amount": 10}
 
         response = self.client.post(self.url, body, headers=headers)
         self.assertEqual(response.status_code, 404)
 
     def test_incorrect_user(self):
-        headers = {
-            "Authorization": f"Token {self.user2_token}"
-        }
+        headers = {"Authorization": f"Token {self.user2_token}"}
 
-        body = {
-            "card_number": self.card.card_number,
-            "amount": 10
-        }
+        body = {"card_number": self.card.card_number, "amount": 10}
 
         response = self.client.post(self.url, body, headers=headers)
         self.assertEqual(response.status_code, 403)
 
     def test_correct_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "card_number": self.card.card_number,
-            "amount": 10
-        }
+        body = {"card_number": self.card.card_number, "amount": 10}
 
         response = self.client.post(self.url, body, headers=headers)
         self.assertEqual(response.status_code, 200)
 
-        cards = Card.objects.order_by('-updated')
+        cards = Card.objects.order_by("-updated")
         self.assertNotEqual(cards.count(), 0)
 
         card = cards.first()
@@ -327,37 +279,29 @@ class IncreaseCompanyBalanceTestCase(TestCase):
             country="Country",
             city="City",
             street="Street",
-            building="12"
+            building="12",
         )
         self.company.generate_token()
 
     def test_incorrect_body(self):
-        body = {
-            "amount": 10
-        }
+        body = {"amount": 10}
 
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 400)
 
     def test_incorrect_company_token(self):
-        body = {
-            "company_token": "9485n394038yt",
-            "amount": 10
-        }
+        body = {"company_token": "9485n394038yt", "amount": 10}
 
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 404)
 
     def test_correct_request(self):
-        body = {
-            "company_token": self.company.company_token,
-            "amount": 10
-        }
+        body = {"company_token": self.company.company_token, "amount": 10}
 
         response = self.client.post(self.url, body)
         self.assertEqual(response.status_code, 200)
 
-        companies = Company.objects.order_by('-updated')
+        companies = Company.objects.order_by("-updated")
         self.assertNotEqual(companies.count(), 0)
 
         company = companies.first()
@@ -368,7 +312,7 @@ class GetCardBalanceTestCase(TestCase):
     def setUp(self):
         self.client = Client()
         self.factory = RequestFactory()
-        self.request = self.factory.get('/dummy-url/')
+        self.request = self.factory.get("/dummy-url/")
 
         self.user, _ = do_user_login("test@gmail.com", "password1213")
         self.card = Card.objects.create(owner=self.user.profile)
@@ -425,17 +369,13 @@ class GetUserTransactionsTestCase(TestCase):
             transaction.save()
 
     def test_incorrect_token(self):
-        headers = {
-            "Authorization": "Token 898w9735bo359"
-        }
+        headers = {"Authorization": "Token 898w9735bo359"}
 
         response = self.client.get(self.url, headers=headers)
         self.assertEqual(response.status_code, 401)
 
     def test_correct_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
         response = self.client.get(self.url, headers=headers)
         response_body = response.json()
@@ -457,37 +397,23 @@ class CreateIncreaseBalanceRequestTestCase(TestCase):
         self.card.save()
 
     def test_incorrect_token(self):
-        headers = {
-            "Authorization": "Token 898w9735bo359"
-        }
+        headers = {"Authorization": "Token 898w9735bo359"}
 
         response = self.client.post(self.url, headers=headers)
         self.assertEqual(response.status_code, 401)
 
     def test_incorrect_card_number(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "amount": 100,
-            "card_number": "0",
-            "message": ""
-        }
+        body = {"amount": 100, "card_number": "0", "message": ""}
 
         response = self.client.post(self.url, headers=headers, data=body)
         self.assertEqual(response.status_code, 404)
 
     def test_correct_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "amount": 100,
-            "card_number": self.card.card_number,
-            "message": "Hello"
-        }
+        body = {"amount": 100, "card_number": self.card.card_number, "message": "Hello"}
 
         response = self.client.post(self.url, headers=headers, data=body)
         self.assertEqual(response.status_code, 200)
@@ -506,17 +432,13 @@ class GetIncreaseBalanceRequestsTestCase(TestCase):
         self.user, self.user_token = do_user_login("test@gmail.com", "password1213")
 
     def test_incorrect_token(self):
-        headers = {
-            "Authorization": "Token 898w9735bo359"
-        }
+        headers = {"Authorization": "Token 898w9735bo359"}
 
         response = self.client.get(self.url, headers=headers)
         self.assertEqual(response.status_code, 401)
 
     def test_forbidden_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
         response = self.client.get(self.url, headers=headers)
         self.assertEqual(response.status_code, 403)
@@ -525,9 +447,7 @@ class GetIncreaseBalanceRequestsTestCase(TestCase):
         self.user.profile.role = "admin"
         self.user.profile.save()
 
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
         response = self.client.get(self.url, headers=headers)
         self.assertEqual(response.status_code, 200)
@@ -554,22 +474,15 @@ class ConsiderIncreaseBalanceRequestsTestCase(TestCase):
         self.balance_request.save()
 
     def test_incorrect_token(self):
-        headers = {
-            "Authorization": "Token 898w9735bo359"
-        }
+        headers = {"Authorization": "Token 898w9735bo359"}
 
         response = self.client.post(self.url, headers=headers)
         self.assertEqual(response.status_code, 401)
 
     def test_forbidden_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "request_id": self.balance_request.id,
-            "status": "accepted"
-        }
+        body = {"request_id": self.balance_request.id, "status": "accepted"}
 
         response = self.client.post(self.url, headers=headers, data=body)
         self.assertEqual(response.status_code, 403)
@@ -578,9 +491,7 @@ class ConsiderIncreaseBalanceRequestsTestCase(TestCase):
         self.user.profile.role = "admin"
         self.user.profile.save()
 
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
         body = {}
 
@@ -591,14 +502,9 @@ class ConsiderIncreaseBalanceRequestsTestCase(TestCase):
         self.user.profile.role = "admin"
         self.user.profile.save()
 
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
-        body = {
-            "request_id": self.balance_request.id,
-            "status": "accepted"
-        }
+        body = {"request_id": self.balance_request.id, "status": "accepted"}
 
         response = self.client.post(self.url, headers=headers, data=body)
         self.assertEqual(response.status_code, 200)
@@ -625,17 +531,13 @@ class GetUserCardsTestCase(TestCase):
         self.card.save()
 
     def test_incorrect_token(self):
-        headers = {
-            "Authorization": "Token 898w9735bo359"
-        }
+        headers = {"Authorization": "Token 898w9735bo359"}
 
         response = self.client.get(self.url, headers=headers)
         self.assertEqual(response.status_code, 401)
 
     def test_correct_request(self):
-        headers = {
-            "Authorization": f"Token {self.user_token}"
-        }
+        headers = {"Authorization": f"Token {self.user_token}"}
 
         response = self.client.get(self.url, headers=headers)
         self.assertEqual(response.status_code, 200)

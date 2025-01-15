@@ -1,6 +1,10 @@
+import json
 import logging
 from decimal import Decimal
+from multiprocessing import Process
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
@@ -12,6 +16,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from database_models.models import Card, Profile, Company, Transaction, IncreaseBalanceRequest
 from database_models.utils import check_hex_digit
 from database_models.serializers import CardSerializer, TransactionSerializer, IncreaseBalanceRequestSerializer
+from telegram_bot.bot_send_receipt import run_async_send_message_in_process
 
 
 class IncreaseCardBalance(APIView):
@@ -28,7 +33,9 @@ class IncreaseCardBalance(APIView):
 
             cards = Card.objects.filter(_card_number=card_number)
             if cards.count() == 0:
-                return Response(data={"success": False, "message": "Error. There is no card with this card_number"}, status=404)
+                return Response(
+                    data={"success": False, "message": "Error. There is no card with this card_number"}, status=404
+                )
 
             card = cards.first()
             if request.user == card.owner.user:
@@ -54,7 +61,10 @@ class IncreaseCompanyBalance(APIView):
 
             companies = Company.objects.filter(_company_token=company_token)
             if companies.count() == 0:
-                return Response(data={"success": False, "message": "Error. There is no company with this company_token."}, status=404)
+                return Response(
+                    data={"success": False, "message": "Error. There is no company with this company_token."},
+                    status=404,
+                )
             company = companies.first()
             company.balance = company.balance + Decimal(amount)
             company.save()
@@ -106,9 +116,7 @@ class GetUserTransactions(ListAPIView):
 
     def get_queryset(self, *args, **kwargs):
         logging.log(logging.INFO, f"args: {args}, kwargs: {kwargs}")
-        return super().get_queryset(*args, **kwargs).filter(
-            card__owner=self.request.user.profile
-        )
+        return super().get_queryset(*args, **kwargs).filter(card__owner=self.request.user.profile)
 
 
 class CreateIncreaseBalanceRequest(APIView):
@@ -118,9 +126,13 @@ class CreateIncreaseBalanceRequest(APIView):
         try:
             amount = request.data.get("amount", 0)
             card_number = request.data.get("card_number")
+            telegram_chat_id = request.data.get("telegram_chat_id", "")
             message = request.data.get("message")
 
-            logging.log(logging.INFO, f"Data from request - card_number: {card_number}, amount: {amount}, message: {message}")
+            logging.log(
+                logging.INFO,
+                f"Data from request - card_number: {card_number}, telegram_chat_id: {telegram_chat_id}, amount: {amount}, message: {message}",
+            )
 
             cards = Card.objects.filter(owner__user=request.user, _card_number=card_number)
             if cards.count() == 0:
@@ -129,6 +141,7 @@ class CreateIncreaseBalanceRequest(APIView):
             increase_balance_request = IncreaseBalanceRequest()
             increase_balance_request.requested_money = Decimal(amount)
             increase_balance_request.card = card
+            increase_balance_request.telegram_chat_id = telegram_chat_id
             increase_balance_request.attached_message = message
             increase_balance_request.save()
             logging.log(logging.INFO, f"IncreaseBalanceRequest created with id: {increase_balance_request.id}")
@@ -144,21 +157,21 @@ class GetIncreaseBalanceRequests(APIView):
         try:
             profiles = Profile.objects.filter(user=request.user)
             if profiles.count() == 0:
-                return Response(data={"success": False, "message": "Error. There is no profile for this user"}, status=404)
+                return Response(
+                    data={"success": False, "message": "Error. There is no profile for this user"}, status=404
+                )
             profile = profiles.first()
 
             if profile.role != "admin":
-                return Response(data={"success": False, "message": "Error. This action available only for admins"}, status=403)
+                return Response(
+                    data={"success": False, "message": "Error. This action available only for admins"}, status=403
+                )
 
             serializer = IncreaseBalanceRequestSerializer(
-                IncreaseBalanceRequest.objects.filter(request_status="waiting"),
-                many=True
+                IncreaseBalanceRequest.objects.filter(request_status="waiting"), many=True
             )
             data = serializer.data
-            logging.log(
-                logging.INFO,
-                f"Get increase balance requests with status 'waiting': {data}"
-            )
+            logging.log(logging.INFO, f"Get increase balance requests with status 'waiting': {data}")
 
             return Response(data={"success": True, "data": data, "message": ""}, status=200)
         except Exception as ex:
@@ -173,37 +186,42 @@ class ConsiderIncreaseBalanceRequests(APIView):
             user = request.user
             profiles = Profile.objects.filter(user=user)
             if profiles.count() == 0:
-                return Response(data={"success": False, "message": "Error. There is no profile for this user"},
-                                status=404)
+                return Response(
+                    data={"success": False, "message": "Error. There is no profile for this user"}, status=404
+                )
             profile = profiles.first()
 
             if profile.role != "admin":
-                return Response(data={"success": False, "message": "Error. This action available only for admins"},
-                                status=403)
+                return Response(
+                    data={"success": False, "message": "Error. This action available only for admins"}, status=403
+                )
 
             request_id = request.data.get("request_id")
             new_status = request.data.get("status")
 
-            logging.log(logging.INFO,
-                        "User has admin role")
+            logging.log(logging.INFO, "User has admin role")
 
-            logging.log(logging.INFO,
-                        f"Data from request - request_id: {request_id}, new_status: {new_status}")
+            logging.log(logging.INFO, f"Data from request - request_id: {request_id}, new_status: {new_status}")
 
             if request_id is None or new_status is None:
-                return Response(data={"success": False, "message": "Error. Invalid request data"},
-                                status=400)
+                return Response(data={"success": False, "message": "Error. Invalid request data"}, status=400)
 
             increase_requests = IncreaseBalanceRequest.objects.filter(pk=request_id, request_status="waiting")
 
             if increase_requests.count() == 0:
-                return Response(data={"success": False, "message": "Error. There is no waiting increase balance request with that id"},
-                                status=404)
+                return Response(
+                    data={
+                        "success": False,
+                        "message": "Error. There is no waiting increase balance request with that id",
+                    },
+                    status=404,
+                )
             increase_request = increase_requests.first()
 
             if new_status != "accepted" and new_status != "denied":
-                return Response(data={"success": False, "message": "Error. Incorrect status in request body"},
-                                status=400)
+                return Response(
+                    data={"success": False, "message": "Error. Incorrect status in request body"}, status=400
+                )
 
             if new_status == "accepted":
                 increase_request.card.balance = increase_request.card.balance + increase_request.requested_money
@@ -212,8 +230,9 @@ class ConsiderIncreaseBalanceRequests(APIView):
             increase_request.request_status = new_status
             increase_request.save()
 
-            logging.log(logging.INFO,
-                        f"Money request considered and now status equal - {increase_request.request_status} ")
+            logging.log(
+                logging.INFO, f"Money request considered and now status equal - {increase_request.request_status} "
+            )
 
             return Response(data={"success": True, "message": ""}, status=200)
         except Exception as ex:
@@ -227,17 +246,50 @@ class GetUserCards(ListAPIView):
         try:
             user = request.user
 
-            serializer = CardSerializer(
-                Card.objects.filter(owner__user=user),
-                many=True
-            )
+            serializer = CardSerializer(Card.objects.filter(owner__user=user), many=True)
 
             data = serializer.data
 
-            logging.log(logging.INFO,
-                        f"Getting user cards: {data} ")
+            logging.log(logging.INFO, f"Getting user cards: {data} ")
 
             return Response(data={"success": True, "data": data, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
 
+
+@csrf_exempt
+def send_user_analytics(request):
+    if request.method == "POST":
+        try:
+            body = request.body.decode("utf-8")
+            data = json.loads(body)
+
+            user_full_name = data.get("user_full_name", "Error")
+            telegram_user_id = data.get("telegram_user_id", "Error")
+            telegram_chat_id = data.get("telegram_chat_id", "")
+            username = data.get("username", "Error")
+
+            admin_message = (
+                f"New start, user: {user_full_name} started bot\n"
+                f"User id: {telegram_user_id}\n"
+                f"Username: https://t.me/{username}\n"
+            )
+
+            admin_chat_ids = Profile.objects.filter(role="admin").values_list("telegram_chat_id").distinct()
+
+            for chat_id in admin_chat_ids:
+                logging.log(logging.INFO, f"Admin chat_id: {chat_id[0]} {type(chat_id[0])}, telegram_chat_id: {telegram_chat_id} {type(telegram_chat_id)}")
+                if chat_id[0] != str(telegram_chat_id):
+                    process = Process(
+                        target=run_async_send_message_in_process,
+                        args=(
+                            chat_id[0],
+                            admin_message,
+                        ),
+                    )
+                    process.start()
+            return JsonResponse(data={"success": True, "message": ""}, status=200)
+        except Exception as ex:
+            return JsonResponse(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+    else:
+        return JsonResponse(data={"success": False, "message": "This method is not allowed"}, status=405)

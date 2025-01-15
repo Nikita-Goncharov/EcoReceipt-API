@@ -7,6 +7,8 @@
 *.log
 *.log.*
 __pycache__/
+backups/
 
+make_backup.sh
 server_8000.sh
 media/uploads/**
