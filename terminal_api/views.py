@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
-from telegram_bot.bot_send_receipt import run_async_in_process
+from telegram_bot.bot_send_receipt import run_async_send_receipt_in_process
 from client_api.views import GetCardBalance
 from database_models.models import Card, Company, Receipt, Transaction
 
@@ -107,7 +107,7 @@ class WriteOffMoney(APIView):
                 request_site = get_current_site(request)
                 logging.log(logging.INFO, f"Current site: {request_site.domain}")
                 process = Process(
-                    target=run_async_in_process,
+                    target=run_async_send_receipt_in_process,
                     args=(
                         f"http://{request_site.domain}/media/{receipt_path}",
                         card.owner.telegram_chat_id,

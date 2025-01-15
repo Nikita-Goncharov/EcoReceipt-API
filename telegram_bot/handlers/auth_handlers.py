@@ -54,7 +54,7 @@ async def get_login_password(message: Message, state: FSMContext):
                 f"{SERVER_API_DOMAIN}login/", json={"email": data["email"], "password": data["password"]}
             ) as response:
                 if response.status == 200:
-                    reply = "You were successfully logged in"
+                    reply = "✅You were successfully logged in"
                     response_data = await response.json()
 
                     headers = {"Authorization": f"Token {response_data['token']}"}
@@ -70,14 +70,14 @@ async def get_login_password(message: Message, state: FSMContext):
                                 keyboard = keyboard_for_logged_in
                         else:
                             logging.info(f"Error. {await get_info_response.json()}")
-                            reply = "Error. Could not get info about logged in user. Try again."
+                            reply = "❌Error. Could not get info about logged in user. Try again."
                             keyboard = keyboard_for_anon
                 else:
                     logging.info(f"Error. {await response.json()}")
-                    reply = "Error. You were not successfully logged in. Try again."
+                    reply = "❌Error. You were not successfully logged in. Try again."
                     keyboard = keyboard_for_anon
     else:
-        reply = "Error. You were not successfully logged in. Try again."
+        reply = "❌Error. You were not successfully logged in. Try again."
         keyboard = keyboard_for_anon
 
     await message.answer(reply, reply_markup=keyboard)
@@ -96,15 +96,15 @@ async def logout_handler(message: Message):
                 headers={"Authorization": f'Token {user_auth_data["token"]}'},
             ) as response:
                 if response.status == 200:
-                    reply = "You were successfully logged out"
+                    reply = "✅You were successfully logged out"
                     await save_user_auth_status(message.from_user.id)
                     keyboard = keyboard_for_anon
                 else:
                     logging.info(f"Error. {await response.json()}")
-                    reply = "Error. You were not successfully logged out. Try again."
+                    reply = "❌Error. You were not successfully logged out. Try again."
                     keyboard = keyboard_for_logged_in
     else:
-        reply = "Error. You were not successfully logged out. Try again."
+        reply = "❌Error. You were not successfully logged out. Try again."
         keyboard = keyboard_for_anon
     await message.answer(reply, reply_markup=keyboard)
 
@@ -165,10 +165,10 @@ async def get_password(message: Message, state: FSMContext):
     async with ClientSession() as session:
         async with session.post(f"{SERVER_API_DOMAIN}register_user/", json=json_data) as response:
             if response.status == 200:
-                reply = "Your user was created"
+                reply = "✅Your user was created"
             else:
                 logging.info(f"Error. {await response.json()}")
-                reply = "Error. Your user was not created. Try again."
+                reply = "❌Error. Your user was not created. Try again."
 
     user_auth_data = await get_user_auth_status(message.from_user.id)
 
@@ -202,10 +202,10 @@ async def register_card(message: Message, state: FSMContext):
     async with ClientSession() as session:
         async with session.post(f"{SERVER_API_DOMAIN}register_card/", headers=headers, json=json_data) as response:
             if response.status == 200:
-                reply = "Your card was created"
+                reply = "✅Your card was created"
             else:
                 logging.info(f"Error. {await response.json()}")
-                reply = "Error. Your card was not created. Try again."
+                reply = "❌Error. Your card was not created. Try again."
 
     user_auth_data = await get_user_auth_status(message.from_user.id)
 
@@ -296,10 +296,10 @@ async def get_company_building(message: Message, state: FSMContext):
                     )
                 else:
                     company_name, company_token = "", ""
-                reply = f"Your company was created\nCompany name: `{company_name}`\nCompany token: `{company_token}`"
+                reply = f"✅Your company was created\nCompany name: `{company_name}`\nCompany token: `{company_token}`"
             else:
                 logging.info(f"Error. {await response.json()}")
-                reply = "Error. Your company was not created. Try again."
+                reply = "❌Error. Your company was not created. Try again."
 
     await message.answer(
         reply, parse_mode="Markdown", reply_markup=keyboard_for_anon

@@ -1,6 +1,10 @@
+import json
 import logging
 from decimal import Decimal
+from multiprocessing import Process
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
@@ -12,6 +16,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from database_models.models import Card, Profile, Company, Transaction, IncreaseBalanceRequest
 from database_models.utils import check_hex_digit
 from database_models.serializers import CardSerializer, TransactionSerializer, IncreaseBalanceRequestSerializer
+from telegram_bot.bot_send_receipt import run_async_send_message_in_process
 
 
 class IncreaseCardBalance(APIView):
@@ -250,3 +255,41 @@ class GetUserCards(ListAPIView):
             return Response(data={"success": True, "data": data, "message": ""}, status=200)
         except Exception as ex:
             return Response(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+
+
+@csrf_exempt
+def send_user_analytics(request):
+    if request.method == "POST":
+        try:
+            body = request.body.decode("utf-8")
+            data = json.loads(body)
+
+            user_full_name = data.get("user_full_name", "Error")
+            telegram_user_id = data.get("telegram_user_id", "Error")
+            telegram_chat_id = data.get("telegram_chat_id", "")
+            username = data.get("username", "Error")
+
+            admin_message = (
+                f"New start, user: {user_full_name} started bot\n"
+                f"User id: {telegram_user_id}\n"
+                f"Username: https://t.me/{username}\n"
+            )
+
+            admin_chat_ids = Profile.objects.filter(role="admin").values_list("telegram_chat_id").distinct()
+
+            for chat_id in admin_chat_ids:
+                logging.log(logging.INFO, f"Admin chat_id: {chat_id[0]} {type(chat_id[0])}, telegram_chat_id: {telegram_chat_id} {type(telegram_chat_id)}")
+                if chat_id[0] != str(telegram_chat_id):
+                    process = Process(
+                        target=run_async_send_message_in_process,
+                        args=(
+                            chat_id[0],
+                            admin_message,
+                        ),
+                    )
+                    process.start()
+            return JsonResponse(data={"success": True, "message": ""}, status=200)
+        except Exception as ex:
+            return JsonResponse(data={"success": False, "message": f"Error. {str(ex)}"}, status=500)
+    else:
+        return JsonResponse(data={"success": False, "message": "This method is not allowed"}, status=405)

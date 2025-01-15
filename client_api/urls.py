@@ -18,6 +18,8 @@ urlpatterns = [
     path("get_increase_balance_requests/", views.GetIncreaseBalanceRequests.as_view()),
     path("consider_increase_balance_request/", views.ConsiderIncreaseBalanceRequests.as_view()),
     path("get_cards/", views.GetUserCards.as_view()),
+
+    path("send_user_analytics/", views.send_user_analytics),
     # TODO:
     # get_company_balance
     # get_user_cards

@@ -14,7 +14,7 @@ class ReceiptAdmin(admin.ModelAdmin):
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ("user__username", "cards_list", "created", "updated")
+    list_display = ("user__username", "cards_list", "role", "telegram_chat_id", "created", "updated")
 
     def cards_list(self, obj):
         return ", ".join([card.card_number for card in obj.cards.all()])
